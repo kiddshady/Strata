@@ -85,6 +85,7 @@ app.whenReady().then(async () => {
   console.log('\n1. Arranque, sin base');
   ok('el splash se fue', !(await js(`!!document.getElementById('boot-splash')`)));
   ok('los <i data-icon> se reemplazaron por SVG', !(await js(`!!document.querySelector('i[data-icon]')`)));
+  ok('el inicio muestra la versión', /^v\d+\.\d+\.\d+$/.test(await text('.st-hero__ver') || ''), await text('.st-hero__ver'));
   ok('el inicio invita a abrir', !!(await js(`document.querySelector('.st-hero [data-action="open"]')`)));
   const rail0 = await rect('.op-rail');
   ok('sin base, el rail está plegado', rail0 && rail0.w < 1, JSON.stringify(rail0));

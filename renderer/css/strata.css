@@ -152,6 +152,7 @@ body.is-busy, body.is-busy * { cursor: progress !important; }
 .st-hero__text { max-width: 380px; font-size: var(--op-fs-13); color: var(--op-text-3); line-height: var(--op-lh-loose); user-select: none; cursor: default; }
 .st-hero__actions { margin: var(--op-3) 0 var(--op-1); }
 .st-hero__actions .op-kbd { margin-left: var(--op-1); }
+.st-hero__ver { margin-top: var(--op-4); font-size: var(--op-fs-10); color: var(--op-text-4); letter-spacing: .04em; }
 
 .st-home__recents { margin-top: var(--op-9); }
 .st-home__label { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--op-3) var(--op-2); }

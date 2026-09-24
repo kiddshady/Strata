@@ -453,6 +453,8 @@ async function boot() {
     return;
   }
 
+  // La versión, a la vista: es lo primero que se mira después de actualizar.
+  document.querySelector('.op-brand').dataset.tip = `Strata ${S.info.version}`;
   updateChrome();
   api.onOpenFile((p) => openDatabase(p));
 

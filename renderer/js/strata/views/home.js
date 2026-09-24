@@ -54,6 +54,7 @@ export function viewHome() {
             </button>
           </div>
           <span class="op-meta">o soltá el archivo en la ventana</span>
+          ${S.info?.version ? `<span class="st-hero__ver op-mono">v${esc(S.info.version)}</span>` : ''}
         </div>
         <div id="home-recents-slot">${recentsHTML()}</div>
       </div>
