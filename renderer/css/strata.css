@@ -1,0 +1,743 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   STRATA — estilos propios
+   Todo lo que Opal no trae: el rail con el esquema, el grid virtual, el
+   inspector de fila, la consola y el inicio. Prefijo `st-`. Solo tokens de
+   Opal (tokens.css): si falta uno, se agrega allá, no se escribe un valor
+   crudo acá. Las pocas cifras sueltas son geometría propia del grid.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* El grid es opaco: la columna # y el encabezado se pegan al hacer scroll y
+     tienen que TAPAR lo que pasa por debajo. Derivados del fondo, así siguen
+     a las perillas de retint. */
+  --st-grid-bg:   color-mix(in oklab, var(--op-bg), black 24%);
+  --st-head-bg:   color-mix(in oklab, var(--op-bg), white 3.5%);
+  --st-gutter-bg: color-mix(in oklab, var(--op-bg), black 8%);
+  --st-head-h: 34px;
+  --st-cell-x: 12px;
+}
+
+/* La marca: las vetas se leen un poco más que el fuego del cabujón de Opal. */
+.op-brand__mark .op-brand__trail { opacity: .55; }
+
+body.is-busy, body.is-busy * { cursor: progress !important; }
+
+.op-iconbtn.is-on { color: var(--op-accent); background: var(--op-wash-1); }
+
+/* ══ Sin base: el rail se pliega ═════════════════════════════════════════════
+   No hay nada que navegar, así que la vista ocupa la ventana. El rail no
+   desaparece: se cierra, animando la columna del grid; su contenido conserva
+   el ancho para no reacomodarse mientras tanto. */
+.op-body { transition: grid-template-columns var(--op-t-4) var(--op-ease); }
+.op-rail { overflow: hidden; min-width: 0; transition: box-shadow var(--op-t-3) var(--op-ease-soft); }
+.op-rail > * { min-width: var(--op-rail); }
+.st-bare .op-body { grid-template-columns: 0px 1fr; }
+.st-bare .op-rail { box-shadow: none; }
+
+/* ══ Rail ════════════════════════════════════════════════════════════════════ */
+
+.st-railtop { display: flex; flex-direction: column; gap: var(--op-2); padding-bottom: 0; }
+
+/* La base abierta: una hoja con su ícono hundido. Abre el menú de la base. */
+.st-dbbtn {
+  display: flex;
+  align-items: center;
+  gap: var(--op-3);
+  width: 100%;
+  padding: var(--op-2);
+  border: 0;
+  border-radius: var(--op-r-md);
+  background: var(--op-s2);
+  box-shadow: var(--op-sheet);
+  text-align: left;
+  cursor: default;
+  transition: var(--tr-color);
+}
+.st-dbbtn:hover, .st-dbbtn.is-open { background: var(--op-s3); }
+.st-dbbtn__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: var(--op-r-sm);
+  background: var(--op-deep);
+  box-shadow: inset 0 0 0 1px var(--op-rim);
+  color: var(--op-accent);
+}
+.st-dbbtn__text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; line-height: var(--op-lh-tight); }
+.st-dbbtn__name { font-size: var(--op-fs-13); font-weight: var(--op-w-medium); color: var(--op-text); }
+.st-dbbtn__meta { font-size: var(--op-fs-11); color: var(--op-text-3); margin-top: 2px; }
+.st-dbbtn__chev { width: 12px; height: 12px; color: var(--op-text-4); transition: transform var(--op-t-2) var(--op-ease); }
+.st-dbbtn.is-open .st-dbbtn__chev { transform: rotate(180deg); }
+
+.st-railfilter .op-input { min-height: 28px; height: 28px; font-size: var(--op-fs-12); }
+
+/* Grupos del esquema: el rótulo es un botón que pliega. */
+.st-group__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  transition: color var(--op-t-1) var(--op-ease-soft);
+}
+.st-group__label:hover { color: var(--op-text-3); }
+.st-group__chev { width: 10px; height: 10px; stroke-width: 2; transition: transform var(--op-t-3) var(--op-ease); }
+.st-group__label.is-open .st-group__chev { transform: rotate(90deg); }
+.st-group__count { margin-left: auto; letter-spacing: 0; font-weight: var(--op-w-medium); }
+
+.op-navitem.st-obj { height: 28px; gap: 10px; font-size: var(--op-fs-12); }
+.op-navitem.st-obj .op-icon { width: 14px; height: 14px; }
+.st-rail__none { padding: var(--op-3) var(--op-2); }
+
+/* ══ Statusbar ═══════════════════════════════════════════════════════════════ */
+
+[data-needs-db] { transition: opacity var(--op-t-3) var(--op-ease-soft), var(--tr-color); }
+[data-needs-db].is-off { opacity: 0; pointer-events: none; }
+.st-stat-db { min-width: 0; max-width: 40%; }
+.st-readonly .op-icon { color: var(--op-accent); }
+
+/* El aviso de versión nueva: entra deslizándose, nunca de golpe. */
+.st-update {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: default;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--op-t-3) var(--op-ease-soft), transform var(--op-t-3) var(--op-ease), var(--tr-color);
+}
+.st-update.is-on { opacity: 1; transform: none; }
+.st-update .op-icon { width: 12px; height: 12px; }
+.st-update.is-ready { color: var(--op-accent); }
+.st-update.is-ready:hover { color: var(--op-text); background: var(--op-wash-1); }
+
+/* ══ Inicio ══════════════════════════════════════════════════════════════════ */
+
+.st-home { display: flex; justify-content: center; }
+.st-home__inner {
+  width: 100%;
+  max-width: 640px;
+  padding-top: clamp(24px, 11vh, 120px);
+  padding-bottom: var(--op-7);
+}
+.st-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--op-3);
+  text-align: center;
+}
+.st-hero__mark {
+  width: 58px;
+  height: 58px;
+  margin-bottom: var(--op-2);
+  fill: none;
+  stroke: var(--op-accent);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.st-hero__mark .op-brand__trail { opacity: .55; }
+.st-hero__title {
+  font-size: var(--op-fs-26);
+  font-weight: var(--op-w-semi);
+  letter-spacing: var(--op-track-tight);
+  line-height: 1.1;
+}
+.st-hero__text { max-width: 380px; font-size: var(--op-fs-13); color: var(--op-text-3); line-height: var(--op-lh-loose); user-select: none; cursor: default; }
+.st-hero__actions { margin: var(--op-3) 0 var(--op-1); }
+.st-hero__actions .op-kbd { margin-left: var(--op-1); }
+
+.st-home__recents { margin-top: var(--op-9); }
+.st-home__label { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--op-3) var(--op-2); }
+.st-recent { cursor: default; }
+.st-recent__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: var(--op-r-sm);
+  background: var(--op-sunken);
+  box-shadow: var(--op-hairline);
+  color: var(--op-text-3);
+  transition: var(--tr-color);
+}
+.st-recent:hover .st-recent__icon { color: var(--op-accent); box-shadow: inset 0 0 0 1px var(--op-rim); }
+.st-recent .op-listitem__sub { font-size: var(--op-fs-11); }
+.st-recent.is-missing { opacity: .55; }
+.st-recent.is-missing .st-recent__icon { color: var(--op-text-4); }
+
+/* ══ Resumen ═════════════════════════════════════════════════════════════════ */
+
+.st-overview, .st-structure { display: flex; flex-direction: column; gap: var(--op-4); }
+.st-stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--op-4);
+  padding: var(--op-5) var(--op-5);
+}
+.st-stats .op-stat__unit { display: block; margin-top: 4px; font-size: var(--op-fs-11); }
+.st-overview__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: var(--op-4);
+  align-items: start;
+}
+.st-tablelist { gap: 2px; padding-top: 0; }
+.st-tablerow { width: 100%; }
+.st-tablerow > .op-icon { color: var(--op-text-3); transition: color var(--op-t-1) var(--op-ease-soft); }
+.st-tablerow:hover > .op-icon { color: var(--op-accent); }
+.st-tablerow__meter { margin-top: 7px; height: 2px; background: var(--op-s2); }
+/* Es un <span> (vive adentro de un botón): sin display:block el ancho no aplica. */
+.st-tablerow__meter .op-meter__fill { display: block; }
+.st-tablerow__rows { min-width: 64px; text-align: right; font-size: var(--op-fs-12); color: var(--op-text-2); }
+.st-kv { grid-template-columns: 112px minmax(0, 1fr); row-gap: 10px; }
+.st-kv .op-kv__v { word-break: break-all; white-space: normal; }
+
+.st-note { font-size: var(--op-fs-12); color: var(--op-text-4); line-height: var(--op-lh-loose); }
+.st-note--center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--op-3);
+  animation: op-fade-in var(--op-t-3) var(--op-ease) both;
+}
+.st-note--center .op-icon { width: 26px; height: 26px; stroke-width: 1.1; }
+
+.st-error {
+  display: flex;
+  align-items: center;
+  gap: var(--op-2);
+  padding: var(--op-4);
+  color: var(--op-danger);
+  font-size: var(--op-fs-12);
+  user-select: text;
+}
+.st-error--boot { flex: 1; justify-content: center; }
+
+.st-skel {
+  display: inline-block;
+  width: var(--w, 60%);
+  height: 7px;
+  border-radius: var(--op-r-pill);
+  background: rgb(255 255 255 / .05);
+  vertical-align: middle;
+}
+
+/* ══ Tabla: pestañas, barra y cuerpo ═════════════════════════════════════════ */
+
+.st-tabs { flex: 0 0 auto; }
+.st-tabs .op-tab .op-icon { width: 13px; height: 13px; }
+.st-tabbody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* La sangría la ponen sus hijos (la barra y el __main del viewbody), no él:
+   el inspector tiene que llegar al borde. La regla del shell que reparte la
+   sangría pesa (0,3,0) y le gana a .op-bleed, así que acá se la iguala. */
+.op-main > .st-tabbody:not(.op-viewhead):not(.op-viewbody) { padding-inline: 0; }
+.st-tabbody > .st-toolbar { padding-inline: var(--op-6); }
+.st-pad { padding-inline: var(--op-6); }
+/* Abajo muere contra la statusbar, que ya trae su línea: sin esfumado. */
+.st-tabbody > .op-scroll { --op-fade-bottom: 0px; }
+
+.st-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--op-2);
+  flex: 0 0 auto;
+  min-height: 52px;
+  padding-block: var(--op-3) var(--op-2);
+}
+.st-toolbar__meta { font-size: var(--op-fs-12); color: var(--op-text-3); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.st-toolbar__meta .op-icon { width: 12px; height: 12px; }
+
+.st-filter { width: min(340px, 40%); }
+.st-filter .op-input { padding-right: 32px; }
+.st-filter__clear {
+  position: absolute;
+  right: 3px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--op-t-2) var(--op-ease-soft), var(--tr-color);
+}
+.st-filter.has-value .st-filter__clear { opacity: 1; pointer-events: auto; }
+
+.st-chipbtn { border: 0; cursor: default; height: 24px; gap: 6px; animation: op-pop-in var(--op-t-2) var(--op-ease) both; }
+.st-chipbtn:hover { background: var(--op-wash-2); color: var(--op-text); }
+.st-chipbtn .op-icon { color: var(--op-accent); }
+.st-chipbtn .op-icon:last-child { color: var(--op-text-4); }
+
+.st-gridhost {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: var(--op-4);
+}
+/* El contorno va ENCIMA del grid: el encabezado y la columna # son opacos y
+   taparían un box-shadow inset del propio scroller. */
+.st-gridhost::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--op-r-md);
+  box-shadow: inset 0 0 0 1px var(--op-line-2);
+  pointer-events: none;
+  z-index: 5;
+  transition: box-shadow var(--op-t-2) var(--op-ease-soft);
+}
+.st-gridhost:has(.st-grid:focus-visible)::after { box-shadow: inset 0 0 0 1px var(--op-rim); }
+.st-gridhost:empty::after { display: none; }
+
+/* ══ El grid ═════════════════════════════════════════════════════════════════ */
+
+.st-grid {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--op-r-md);
+  background: var(--st-grid-bg);
+  font-size: var(--op-fs-12);
+  animation: op-fade-in var(--op-t-3) var(--op-ease) both;
+}
+.st-grid:focus-visible { box-shadow: none; outline: none; }
+.st-grid.is-resizing, .st-grid.is-resizing * { cursor: col-resize !important; }
+
+.st-grid__head,
+.st-row {
+  display: grid;
+  grid-template-columns: var(--st-cols);
+}
+.st-grid__head,
+.st-grid__layer { width: max(100%, var(--st-w)); }
+
+.st-grid__head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: var(--st-head-h);
+  background: var(--st-head-bg);
+  box-shadow: inset 0 -1px 0 var(--op-line-2);
+}
+.st-grid__layer { position: sticky; top: var(--st-head-h); overflow: clip; }
+.st-grid__rows { position: relative; height: 100%; will-change: transform; }
+.st-grid__spacer { width: 1px; }
+
+.st-gc {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 var(--st-cell-x);
+}
+.st-gc--fill { padding: 0; }
+
+/* La columna # se pega a la izquierda en el scroll horizontal. */
+.st-gc--gutter {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: right;
+  font-family: var(--op-mono);
+  font-size: var(--op-fs-11);
+  color: var(--op-text-4);
+  background: var(--st-gutter-bg);
+  box-shadow: inset -1px 0 0 var(--op-line);
+  font-variant-numeric: tabular-nums;
+}
+.st-grid__head .st-gc--gutter {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: var(--st-head-bg);
+}
+.st-grid__head .st-gc--gutter .op-icon { width: 11px; height: 11px; }
+
+/* Encabezado: nombre, tipo, PK y orden. Click ordena; el borde redimensiona. */
+.st-th {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
+  box-shadow: inset -1px 0 0 var(--op-line);
+  transition: background-color var(--op-t-1) var(--op-ease-soft);
+}
+.st-th:hover { background: var(--op-wash-1); }
+/* El nombre manda: si falta lugar se recorta primero el tipo. */
+.st-th__name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--op-w-medium);
+  color: var(--op-text-2);
+  transition: color var(--op-t-1) var(--op-ease-soft);
+}
+.st-th:hover .st-th__name, .st-th.is-sorted .st-th__name { color: var(--op-text); }
+.st-th__type {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--op-mono);
+  font-size: var(--op-fs-10);
+  color: var(--op-text-4);
+  text-transform: uppercase;
+}
+.st-th__pk { width: 12px; height: 12px; flex: 0 0 auto; color: var(--op-accent); }
+.st-th__sort {
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--op-text-4);
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity var(--op-t-2) var(--op-ease-soft), transform var(--op-t-2) var(--op-ease), color var(--op-t-1) var(--op-ease-soft);
+}
+.st-th__sort .op-icon { width: 12px; height: 12px; }
+.st-th:hover .st-th__sort { opacity: 1; transform: none; }
+.st-th.is-sorted .st-th__sort { opacity: 1; transform: none; color: var(--op-accent); }
+.st-th__grip {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 8px;
+  z-index: 2;
+  cursor: col-resize;
+}
+.st-th__grip::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  left: 3.5px;
+  width: 1px;
+  background: var(--op-rim-2);
+  opacity: 0;
+  transition: opacity var(--op-t-2) var(--op-ease-soft);
+}
+.st-th__grip:hover::after, .st-grid.is-resizing .st-th__grip::after { opacity: 1; }
+
+/* Filas. */
+.st-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--st-rh);
+  line-height: var(--st-rh);
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / .028);
+  transition: background-color var(--op-t-1) var(--op-ease-soft);
+}
+.st-row.is-odd { background: rgb(255 255 255 / .012); }
+.st-row:hover { background: var(--op-wash-1); }
+.st-row.is-sel { background: var(--op-wash-2); }
+.st-row.is-sel .st-gc--gutter {
+  color: var(--op-accent);
+  background: color-mix(in oklab, var(--st-gutter-bg), rgb(var(--op-accent-rgb)) 7%);
+  box-shadow: inset -1px 0 0 var(--op-line), inset 2px 0 0 var(--op-accent);
+}
+
+.st-td { color: var(--op-text); box-shadow: inset -1px 0 0 rgb(255 255 255 / .022); }
+.st-td--int, .st-td--real { text-align: right; }
+.st-td.is-cursor {
+  background: var(--op-wash-2);
+  box-shadow: inset 0 0 0 1px var(--op-rim);
+}
+.st-grid:focus .st-td.is-cursor,
+.st-grid:focus-within .st-td.is-cursor { box-shadow: inset 0 0 0 1px var(--op-rim-2); }
+
+/* El tipo se lee en la celda sin un solo color extra: forma y luminancia. */
+.st-v { font-family: var(--op-mono); font-size: 11.5px; }
+.st-v--int, .st-v--real { color: var(--op-text); font-variant-numeric: tabular-nums; }
+.st-v--null { color: var(--op-text-4); font-size: var(--op-fs-10); letter-spacing: .06em; }
+.st-v--blob { color: var(--op-text-3); font-size: var(--op-fs-11); }
+
+.st-grid__empty { display: none; }
+.st-grid.is-empty .st-grid__empty {
+  position: absolute;
+  top: var(--st-head-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--op-2);
+  color: var(--op-text-4);
+  font-size: var(--op-fs-12);
+  animation: op-fade-in var(--op-t-3) var(--op-ease) both;
+}
+.st-grid__empty .op-icon { width: 24px; height: 24px; stroke-width: 1.1; }
+
+/* ══ Inspector de fila ═══════════════════════════════════════════════════════ */
+
+.st-insp { --op-inspector: 340px; }
+.st-insp .op-inspector__head { padding-bottom: var(--op-2); }
+.st-insp__title { font-size: var(--op-fs-13); color: var(--op-text); font-family: var(--op-mono); white-space: pre; }
+.st-insp__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--op-3);
+  padding: var(--op-8) var(--op-4);
+  text-align: center;
+  font-size: var(--op-fs-12);
+  color: var(--op-text-4);
+  animation: op-fade-in var(--op-t-3) var(--op-ease) both;
+}
+.st-insp__empty .op-icon { width: 24px; height: 24px; stroke-width: 1.1; }
+
+.st-field { padding: var(--op-3) 0; box-shadow: inset 0 -1px 0 var(--op-line); }
+.st-field:last-child { box-shadow: none; }
+.st-field__head { display: flex; align-items: center; gap: 6px; min-height: 22px; margin-bottom: 4px; }
+.st-field__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--op-mono);
+  font-size: var(--op-fs-11);
+  color: var(--op-text-3);
+  transition: color var(--op-t-2) var(--op-ease-soft);
+}
+.st-field.is-focus .st-field__name { color: var(--op-accent); }
+.st-field__type { font-family: var(--op-mono); font-size: var(--op-fs-10); color: var(--op-text-4); text-transform: uppercase; white-space: nowrap; }
+.st-field__copy { margin-left: auto; opacity: 0; transition: opacity var(--op-t-2) var(--op-ease-soft), var(--tr-color); }
+.st-field:hover .st-field__copy, .st-field__copy:focus-visible { opacity: 1; }
+.st-field__val { font-size: var(--op-fs-12); color: var(--op-text); }
+.st-field__more { margin-top: var(--op-2); }
+
+.st-text {
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: var(--op-lh);
+  user-select: text;
+  cursor: text;
+}
+.st-num-val { font-size: var(--op-fs-13); user-select: text; }
+
+.st-code, .st-hex {
+  margin: 0;
+  padding: var(--op-3);
+  border-radius: var(--op-r-sm);
+  background: var(--op-sunken);
+  box-shadow: var(--op-hairline);
+  font-family: var(--op-mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--op-text-2);
+  overflow: auto;
+  user-select: text;
+  cursor: text;
+}
+.st-code { white-space: pre-wrap; word-break: break-word; }
+.st-code--json { max-height: 380px; }
+.st-code--sql { padding: var(--op-4); font-size: var(--op-fs-12); }
+.st-hex { white-space: pre; max-height: 300px; font-size: var(--op-fs-11); }
+.st-hex__off { color: var(--op-text-4); }
+.st-hex__asc { color: var(--op-text-3); }
+
+.st-blobmeta { display: flex; align-items: center; gap: var(--op-2); margin-bottom: var(--op-2); }
+.st-img {
+  display: grid;
+  place-items: center;
+  padding: var(--op-2);
+  border-radius: var(--op-r-sm);
+  background: var(--op-sunken);
+  box-shadow: var(--op-hairline);
+  animation: op-fade-in var(--op-t-3) var(--op-ease) both;
+}
+.st-img img { max-width: 100%; max-height: 280px; border-radius: var(--op-r-xs); }
+
+/* ══ Resaltado (SQL y JSON) ══════════════════════════════════════════════════
+   La ley de Opal: el acento talla las palabras clave; el resto se distingue
+   por luminancia. Nada de un arcoíris de colores. */
+.st-tk-kw   { color: var(--op-accent); }
+.st-tk-type { color: rgb(var(--op-accent-rgb) / .68); }
+.st-tk-key  { color: rgb(var(--op-accent-rgb) / .9); }
+.st-tk-str  { color: var(--op-text-2); }
+.st-tk-num  { color: var(--op-text); }
+.st-tk-id   { color: var(--op-text); }
+.st-tk-lit  { color: var(--op-text-3); }
+.st-tk-p    { color: var(--op-text-3); }
+.st-tk-com  { color: var(--op-text-4); font-style: italic; }
+
+/* ══ Estructura ══════════════════════════════════════════════════════════════ */
+
+.st-structure .op-card__head { padding-bottom: var(--op-2); }
+.st-structure .op-card__head .op-meta { margin-left: auto; }
+.st-structure .op-card__head .op-spacer + .op-btn { margin: -4px -6px -4px 0; }
+.st-tablewrap { padding: 0 var(--op-2) var(--op-2); overflow-x: auto; }
+.st-coltable th { position: static; background: transparent; }
+.st-coltable td { vertical-align: middle; color: var(--op-text-2); }
+.st-strong { color: var(--op-text); }
+.st-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.op-chip.st-chip--key { background: transparent; color: var(--op-accent); box-shadow: inset 0 0 0 1px var(--op-rim); }
+.st-fk { display: inline-flex; align-items: center; gap: 4px; font-size: var(--op-fs-11); }
+.st-fk > .op-icon { color: var(--op-text-4); }
+
+.st-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: 0;
+  border-radius: var(--op-r-xs);
+  background: transparent;
+  color: var(--op-text);
+  font-size: var(--op-fs-12);
+  cursor: default;
+  transition: var(--tr-color);
+}
+.st-link .op-icon { color: var(--op-text-3); transition: color var(--op-t-1) var(--op-ease-soft); }
+.st-link:hover { background: var(--op-wash-1); color: var(--op-accent); }
+.st-link:hover .op-icon { color: var(--op-accent); }
+
+.st-defrow {
+  display: flex;
+  align-items: center;
+  gap: var(--op-2);
+  min-height: 34px;
+  padding: 4px var(--op-3);
+  border-radius: var(--op-r-sm);
+  font-size: var(--op-fs-12);
+  transition: background-color var(--op-t-1) var(--op-ease-soft);
+}
+.st-defrow:hover { background: var(--op-wash-1); }
+.st-defrow__cols { color: var(--op-text-3); font-size: var(--op-fs-11); }
+
+/* ══ Consola ═════════════════════════════════════════════════════════════════ */
+
+.st-editorwrap { flex: 0 0 auto; }
+.st-editor {
+  position: relative;
+  height: 168px;
+  min-height: 84px;
+  max-height: 60vh;
+  overflow: hidden;
+  border-radius: var(--op-r-md);
+  background: var(--op-sunken);
+  box-shadow: inset 0 0 0 1px var(--op-line);
+  transition: box-shadow var(--op-t-2) var(--op-ease-soft), background-color var(--op-t-2) var(--op-ease-soft);
+}
+.st-editor:hover { box-shadow: inset 0 0 0 1px var(--op-line-2); }
+.st-editor:focus-within { background: var(--op-sunken-2); box-shadow: inset 0 0 0 1px var(--op-line-3), 0 0 0 3px var(--op-wash-1); }
+/* Los dos capas tienen que ser idénticas en todo lo que mueve el texto. */
+.st-editor__hl,
+.st-editor__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: var(--op-3) var(--op-4);
+  border: 0;
+  font-family: var(--op-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  letter-spacing: 0;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+.st-editor__hl { pointer-events: none; color: var(--op-text-2); overflow: hidden; }
+.st-editor__input {
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--op-text);
+  outline: none;
+  box-shadow: none;
+  user-select: text;
+}
+.st-editor__input:focus-visible { box-shadow: none; }
+.st-editor__input::selection { background: var(--op-select); color: transparent; }
+
+/* El tirador para agrandar el editor. El `resize` nativo de Chromium pinta su
+   propia muesca gris en la esquina: acá va uno dibujado. */
+.st-editor__grip {
+  position: relative;
+  height: 10px;
+  margin-top: 2px;
+  cursor: row-resize;
+}
+.st-editor__grip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 36px;
+  height: 2px;
+  border-radius: var(--op-r-pill);
+  background: var(--op-line-3);
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity var(--op-t-2) var(--op-ease-soft), background-color var(--op-t-2) var(--op-ease-soft);
+}
+.st-editorwrap:hover .st-editor__grip::after { opacity: 1; }
+.st-editor__grip:hover::after, .st-editor__grip.is-dragging::after { opacity: 1; background: var(--op-rim-2); }
+
+.st-qstatus { min-height: 44px; padding-top: 0; font-size: var(--op-fs-12); }
+.st-qok, .st-qerror { display: inline-flex; align-items: center; gap: 6px; animation: op-fade-in var(--op-t-2) var(--op-ease) both; }
+.st-qok { color: var(--op-text-2); }
+.st-qok .op-icon { width: 13px; height: 13px; color: var(--op-accent); }
+.st-qerror { color: var(--op-danger); min-width: 0; }
+.st-qerror .op-icon { width: 13px; height: 13px; flex: 0 0 auto; }
+.st-qstatus .op-meta { display: inline-flex; align-items: center; gap: 6px; }
+.st-qstatus .op-meta .op-icon { width: 12px; height: 12px; }
+.is-running [data-role="run"] { pointer-events: none; opacity: .7; }
+
+/* ══ Soltar un archivo ═══════════════════════════════════════════════════════
+   Vidrio encima de todo. El blur ya está puesto: entra y sale por opacidad. */
+.st-drop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / .38);
+  backdrop-filter: var(--op-glass);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--op-t-3) var(--op-ease-soft);
+}
+.st-drop.is-on { opacity: 1; }
+/* NUNCA atrapa el puntero, ni visible. Hace falta el id: Opal declara
+   `#op-layer > * { pointer-events: auto }`, que le gana a cualquier clase, y
+   con eso este velo invisible se tragaba todos los clicks de la ventana. Los
+   eventos de arrastre los escucha window, así que no necesita recibirlos. */
+#op-layer > .st-drop { pointer-events: none; }
+.st-drop__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--op-2);
+  padding: var(--op-8) var(--op-9);
+  border-radius: var(--op-r-xl);
+  background: var(--op-s3);
+  box-shadow: var(--op-sheet), var(--op-e4);
+  outline: 1.5px dashed var(--op-rim);
+  outline-offset: -10px;
+  font-size: var(--op-fs-15);
+  font-weight: var(--op-w-medium);
+  transform: scale(.97);
+  transition: transform var(--op-t-3) var(--op-ease);
+}
+.st-drop.is-on .st-drop__box { transform: none; }
+.st-drop__box > .op-icon { color: var(--op-accent); margin-bottom: var(--op-2); }

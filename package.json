@@ -1,0 +1,91 @@
+{
+  "name": "strata",
+  "productName": "Strata",
+  "version": "1.0.0",
+  "description": "Visor de bases SQLite para escritorio, solo lectura.",
+  "main": "main.cjs",
+  "author": "Fran",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "node test/tokens.test.mjs && node test/store.test.mjs && node test/format.test.mjs && node test/sqlread.test.cjs",
+    "test:db": "electron test/db.test.cjs",
+    "smoke": "electron test/renderer.test.cjs",
+    "check": "npm test && npm run test:db && npm run smoke",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist": "electron-builder --win --publish never",
+    "release": "node tools/release.mjs"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "electron": "40.10.2",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "electron-updater": "^6.8.9"
+  },
+  "homepage": "https://github.com/kiddshady/Strata",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kiddshady/Strata.git"
+  },
+  "build": {
+    "appId": "com.kiddshady.strata",
+    "productName": "Strata",
+    "copyright": "Fran · MIT",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "src/**",
+      "renderer/**",
+      "build/icon.png",
+      "package.json",
+      "LICENSE",
+      "NOTICE"
+    ],
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "Strata-Setup-${version}.${ext}",
+      "shortcutName": "Strata",
+      "deleteAppDataOnUninstall": false
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "sqlite",
+          "sqlite3",
+          "db3",
+          "db"
+        ],
+        "name": "Base SQLite",
+        "description": "Base de datos SQLite",
+        "role": "Viewer",
+        "icon": "build/icon.png"
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "kiddshady",
+        "repo": "Strata",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
