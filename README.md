@@ -10,6 +10,30 @@ npm start -- base.db    # abrir una base directo
 npm run check           # todo: unitarios + capa de datos + humo de la interfaz
 ```
 
+## Instalar
+
+Bajá `Strata-Setup-x.y.z.exe` del [último release](https://github.com/kiddshady/Strata/releases/latest)
+y ejecutalo: se instala para tu usuario, sin pedir permisos. De ahí en más
+**se actualiza sola**: al arrancar (y cada 4 horas) se fija si hay una versión
+nueva, la baja en segundo plano y avisa en la statusbar. Se instala al cerrar,
+o al toque con un click en el aviso.
+
+El instalador no está firmado, así que la primera vez Windows SmartScreen
+puede frenarlo: "Más información" → "Ejecutar de todas formas".
+
+## Publicar una versión
+
+```
+npm version patch       # o minor / major: sube la versión y hace el commit + tag
+git push
+npm run release         # tests, instalador, y lo sube al release de GitHub
+```
+
+`tools/release.mjs` no publica si hay cambios sin commitear, si falta un push,
+si la versión ya salió o si falla un test, y al final verifica que el release
+tenga el instalador y el `latest.yml` (sin ese archivo ninguna app instalada
+se entera de la versión nueva). El token sale de `gh auth token`.
+
 ## Qué hace
 
 - **Resumen** de la base: tamaño (con el WAL), tablas y filas, encoding,

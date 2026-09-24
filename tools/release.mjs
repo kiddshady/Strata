@@ -35,10 +35,21 @@ try { run(`gh release view ${tag} --repo ${owner}/${repo}`); die(`${tag} ya exis
 console.log('  tests…');
 execSync('npm run check', { stdio: 'inherit' });
 
+/* El tag y el release van ANTES de subir nada. Si se los deja a electron-builder,
+   sube los archivos en paralelo y cada subida intenta crear el release por su
+   cuenta: una gana, la otra choca con un 422 y aborta a mitad — así salió la
+   1.0.0, con solo el .blockmap y sin el instalador ni el latest.yml (y sin
+   latest.yml ninguna app instalada se entera de nada). */
+if (!run(`git tag --list ${tag}`)) run(`git tag -a ${tag} -m "Strata ${tag}"`);
+run(`git push origin ${tag}`);
+run(`gh release create ${tag} --repo ${owner}/${repo} --title ${version} --notes "Strata ${version}" --verify-tag`);
+
 console.log('\n  armando y subiendo…');
 const token = run('gh auth token');
 execSync('npx electron-builder --win --publish always', { stdio: 'inherit', env: { ...process.env, GH_TOKEN: token } });
 
-// El tag lo crea GitHub al publicar; acá se trae para que el repo local lo tenga.
-try { run('git fetch origin --tags --quiet'); } catch { /* no es grave */ }
+const assets = JSON.parse(run(`gh release view ${tag} --repo ${owner}/${repo} --json assets`)).assets.map((a) => a.name);
+for (const want of ['latest.yml', `Strata-Setup-${version}.exe`]) {
+  if (!assets.includes(want)) die(`el release quedó sin ${want} — las apps instaladas no se van a actualizar`);
+}
 console.log(`\n  listo: https://github.com/${owner}/${repo}/releases/tag/${tag}\n`);
