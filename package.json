@@ -1,7 +1,7 @@
 {
   "name": "strata",
   "productName": "Strata",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Visor de bases SQLite para escritorio, solo lectura.",
   "main": "main.cjs",
   "author": "Fran",
