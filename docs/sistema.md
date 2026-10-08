@@ -49,6 +49,16 @@ hoja es relleno translúcido sin blur: desenfocar lo ya desenfocado cuesta GPU y
 no se ve. Y el blur **no se anima nunca** — todo entra y sale por `opacity` y
 `transform`, con el blur ya puesto.
 
+Una hoja de vidrio que entra moviéndose dejaba en Prism 0.2.13 una línea
+blanca en su canto de arriba contra una página clara: Chromium recalculaba el
+blur en cada cuadro. Con Electron 44 (Chromium 152), medido como allá
+(congelando la entrada del menú y del modal en 30, 70 y 120 ms sobre blanco,
+gris y un borde claro justo debajo del canto), el canto nunca está más claro
+que quieto. Por eso los overlays siguen siendo vidrio y siguen entrando con su
+movimiento. El humo lo vigila (sección 19): si una versión de Chromium lo trae
+de vuelta, la salida es la de Prism, una hoja opaca mientras se mueve, o que
+el vidrio entre solo por opacidad.
+
 **La frontera de backdrop** (dos veces cazada a píxel): un ancestro con máscara
 (el esfumado de `.op-scroll`) o con una animación de opacidad retenida deja al
 vidrio interno CIEGO — el blur computa pero no muestrea, y lo de abajo se lee
@@ -64,8 +74,14 @@ flota directo sobre la niebla, `backdrop-filter: var(--op-glass)`.
 ### Texto — escalera de énfasis
 
 `--op-text` (primario, nunca blanco puro) · `--op-text-2` (secundario) ·
-`--op-text-3` (muted: metadatos, labels) · `--op-text-4` (faint: deshabilitado,
-placeholder).
+`--op-text-3` (muted: metadatos, labels, atajos) · `--op-text-4` (faint:
+deshabilitado, placeholder, íconos de adorno).
+
+`--op-text-3` es el gris más bajo que todavía **se lee**: pasa 4,5:1 (WCAG,
+texto chico) sobre el fondo y sobre las tres hojas, y el test de tokens lo
+verifica. `--op-text-4` no se lee y no lleva datos: la ayuda de un campo, una
+clave de `.op-kv`, el atajo de un menú, la hora de un log o un estado vacío van
+en `--op-text-3` (`.op-dim`), nunca en `--op-text-4` (`.op-dim2`).
 
 ### Acento — la luz no rellena, talla
 
@@ -73,6 +89,13 @@ placeholder).
 fuerte / seleccionado), `--op-wash-3` (activo / presionado), `--op-ring` (focus),
 `--op-select` (`::selection`). Todos salen de `--op-accent-rgb`: cambiar el
 triplete los re-tinta a todos.
+
+**El anillo de foco es un `outline`**, no un `box-shadow` (base.css): casi todos
+los controles declaran su propia sombra en una hoja que carga después, con la
+misma especificidad, y la sombra del anillo perdía (el primario, el secundario,
+el switch, el check y el select quedaban sin ninguna marca). Lo que marca el
+foco a su manera (un campo que se hunde) lo apaga con `outline: none`, nunca
+con `box-shadow: none`.
 
 **La ley de Opal:** el acento nunca rellena un plano. Vive en cantos, líneas y
 puntos — el rim del primario, el fill de 3px del meter y el slider, el halo de
@@ -86,8 +109,13 @@ pintar uno — el sistema base ya no lo hace.
 
 ### Rojo
 
-`--op-danger`, `--op-danger-dim`, `--op-danger-wash`, `--op-danger-ring`.
-Reservados al fallo. Si el rojo aparece decorando, deja de significar.
+`--op-danger`, `--op-danger-dim`, `--op-danger-hover` (el sólido bajo el
+mouse), `--op-danger-wash`, `--op-danger-ring`. Reservados al fallo. Si el rojo
+aparece decorando, deja de significar.
+
+`--op-scrim` (el velo detrás de un modal) y `--op-foot` (el pie del modal, que
+se hunde apenas) también son tokens: en el CSS de las piezas no queda un color
+escrito a mano.
 
 ### Hairlines, elevación, radios
 
@@ -130,8 +158,11 @@ estilo.
 | `--op-ease-both` | in-out | Lo que va y vuelve |
 | `--op-ease-in` | in | Salidas |
 
-Duraciones: `--op-t-1` (110ms, hover) · `--op-t-2` (180ms, el default) ·
-`--op-t-3` (280ms, overlays) · `--op-t-4` (420ms, vistas).
+Duraciones: `--op-t-1` (110ms, hover, y la salida de los overlays chicos:
+tooltip, menú) · `--op-t-2` (180ms, el default) · `--op-t-3` (280ms, overlays) ·
+`--op-t-4` (420ms, la vista que aflora al arrancar) · `--op-t-out` (150ms, lo
+que se va en su lugar: el valor viejo de un relevo, la fila que sale de una
+lista). Lo que se anima desde JS (`motion.js`) lee estas mismas perillas.
 
 Transiciones ya compuestas: `--tr-color`, `--tr-move`, `--tr-fade`,
 `--tr-surface`. **Nunca `transition: all`** — anima propiedades que no querías
@@ -207,6 +238,25 @@ padding ≥ ese valor para que en reposo la banda no coma el primer ni el últim
 La titlebar entera es zona de arrastre; lo que sea clickeable lleva
 `.op-no-drag`. `#op-layer` es donde se portalean todos los overlays.
 
+Los `.op-wincontrol` se clickean en todo el alto de la titlebar (maximizada,
+la esquina acierta la cruz), pero se ven como una pastilla de 28 px adentro:
+hover, press y el anillo de foco no llegan al canto de la ventana, donde se
+cortaban. Si la titlebar tiene otras piezas al lado (pestañas, por ejemplo),
+`--op-wincontrol-nudge` corre la pastilla en vertical para alinearla.
+
+### El anillo de foco no se corta
+
+El anillo de `base.css` sale **3.5px por fuera** del elemento (1.5px de
+outline a 2px de distancia). Todo lo que pueda recibir foco necesita ese aire
+hasta cualquier cosa que recorte (un `.op-scroll`, el borde de la ventana) y
+hasta el canto de la superficie que lo contiene. Donde no lo hay, el anillo va
+**hacia adentro** con un `outline-offset` negativo: así lo llevan el
+`.op-segmented__opt` (2px de carril) y la `.op-tr` con tabindex (va de borde a
+borde, muchas veces de una card). El rail deja `--op-2` arriba del nav por lo
+mismo, y de paso separa el botón principal de la navegación. `npm run smoke`
+lo mide en cada vista (9-bis): si sumás una pieza que pega su anillo contra un
+borde, o una que con Tab no muestra nada, falla ahí.
+
 ### Dentro de la vista
 
 `head({ title, sub, crumbs, actions })` de `ui.js` arma el `.op-viewhead`.
@@ -271,15 +321,31 @@ Agregá `.op-flashable` para el velo de luz al presionar. Se cablea solo con
 |---|---|
 | `.op-select` | Es un `<button>`. Abre un `Menu` propio, no un `<select>` |
 | `.op-stepper` | Envuelve un `<input type=number>` y le pone flechas propias. Cablealo con `bindStepper()` |
-| `.op-switch` | `.is-on` lo prende |
-| `.op-check` | `.is-on`; el tilde se dibuja con `stroke-dashoffset` |
+| `.op-switch` | `.is-on` lo prende. Cablealo con `bindToggle()` |
+| `.op-check` | `.is-on`; el tilde se dibuja con `stroke-dashoffset`. También `bindToggle()` |
 | `.op-slider` | `<input type=range>` estilado; seteale `--op-pct` |
 | `.op-segmented` | La cápsula viaja. Cablealo con `bindSwitcher()` |
+| `.op-iconswap` | Un botón con dos íconos en la misma celda; `.is-b` muestra el segundo y se cruzan. `--swap-out` y `--swap-in` cambian cómo se van y llegan (por defecto, `scale(.75)`) |
 | `.op-kbd` | Una tecla |
 
 `bindSwitcher(el, onChange)` de `motion.js` sirve para `.op-segmented` y
 `.op-tabs`: maneja el activo, hace viajar el indicador y reajusta al
-redimensionar.
+redimensionar. El indicador nace en su lugar (antes viajaba desde la izquierda
+cada vez que se pintaba la vista) y solo viaja al elegir, o al repintar si la
+opción cambió. También marca la elegida para un lector de pantalla
+(`aria-pressed` en el segmentado; `role=tab` y `aria-selected` en los tabs).
+
+`bindToggle(el, onChange)` alterna un `.op-switch` o un `.op-check` y le pone
+`role` (`switch` o `checkbox`) y `aria-checked`: sin eso, para un lector de
+pantalla es «botón» a secas, prendido o apagado. Devuelve `set(on)` para
+cambiarlo desde afuera.
+
+Un `.op-iconbtn` con `disabled` se ve apagado. Las flechas de un `.op-stepper`
+que andan van en `--op-text-3` (un control pide 3:1), y la del tope en
+`--op-text-4`.
+
+Un `.op-input` mide 30 px, lo mismo que un `.op-select` y un `.op-btn`: en una
+fila de controles no hay dos alturas.
 
 ### Un botón nuevo declara SU padding
 
@@ -306,7 +372,9 @@ el SVG corrido más de medio píxel o desbordando.
 Las acciones van en `.op-rowactions` (aparecen con el hover).
 
 `.op-table` + `.op-tr`; `.op-td--num` alinea a la derecha con cifras tabulares,
-`.op-td--tight` achica el padding.
+`.op-td--tight` achica el padding. Una `.op-tr` que se abre con Enter lleva
+`tabindex="0"`, y su anillo de foco es un outline hacia adentro, pintado
+encima de las celdas.
 
 `.op-kv` para pares clave/valor (`__k` / `__v`). `.op-stat` para una cifra
 grande (`__value` / `__unit` / `__label`).
@@ -346,22 +414,57 @@ Todos se portalean a `#op-layer` y todos entran **y salen** animados.
 
 ```js
 Tooltip.init();                         // una vez, al arrancar
+FieldMenu.init();                       // el click derecho en los campos de texto
 Toast.show({ title, text, icon, tone, duration });
 Toast.error(title, text);
 Menu.show(anchorEl, items, { align: 'end' });
-await Modal.show({ title, sub, body, actions, width, dismissible });
+Menu.showAt(x, y, items);               // en un punto (un click derecho propio)
+await Modal.show({ title, sub, body, actions, width, dismissible, signal, arm });
 await Modal.confirm({ title, sub, confirmLabel, danger });
 ```
 
 **Tooltips**: declarativos. `data-tip="texto"`, opcionalmente `data-tip-side`
 (`top`|`bottom`|`left`|`right`) y `data-tip-key` para el atajo. Nunca `title=`.
+Aparecen también al llegar con Tab (solo con `:focus-visible`) y Escape los
+descarta. Un botón de solo ícono con `data-tip` y sin `aria-label` toma el
+texto del tooltip como nombre: para un lector de pantalla, deja de ser «botón»
+a secas. Si su ancla se va del DOM mientras se ve, el tooltip se va con ella.
 
-**Menu items**: `{ label, icon, key, danger, selected, disabled, onSelect }`,
-más `{ sep: true }` y `{ groupLabel }`.
+**Menu items**: `{ label, icon, dot, key, danger, selected, disabled, onSelect,
+mount }`, más `{ sep: true }` y `{ groupLabel }`. `dot` es un color de CSS
+(también un `var()`): un puntito en el lugar del ícono (una etiqueta, un tono),
+del mismo ancho, así los rótulos alinean. Un `disabled` se ve apagado,
+no reacciona al pasar y las flechas lo saltean. `mount(button)` recibe el ítem
+armado, para uno que cambia con el menú abierto. El alto del menú es el lugar
+que hay desde el ancla: si no entra, se desplaza con la barrita a la vista
+mientras quede algo escondido. El menú no se lleva el foco, y las teclas que usa
+(flechas, Enter, Escape) no siguen de largo.
+
+**FieldMenu**: Electron no trae menú contextual en los campos. Este es el de
+Chrome (deshacer, cortar, copiar, pegar, suprimir, seleccionar todo) y se
+prende una vez para toda la app. Pegar lee el portapapeles por el proceso
+principal (`clip:read`): desde la página, leerlo pide un permiso. Un campo que
+quiera otro menú hace `preventDefault()` en su `contextmenu`.
 
 **Modal**: devuelve una promesa con el `value` del botón que se apretó (`null`
 si se cerró). El `body` puede ser HTML o un `Node` — si es un nodo, podés leer
-sus campos después de que cierre. Atrapa el foco y cierra con Escape.
+sus campos después de que cierre. Atrapa el foco y cierra con Escape. El foco
+arranca en el botón que tenga `autofocus` (para un diálogo de opciones, como
+imprimir, donde las flechas no pueden cambiar un campo) y, si ninguno lo pide,
+en el primer campo visible del cuerpo. Un diálogo con un nombre para escribir
+no le pone `autofocus` al botón. Enter en un campo de una línea confirma con la
+acción `primary`: nunca con la destructiva, ni en un textarea, ni con un menú
+abierto encima.
+
+Hay uno solo a la vista: el que llega con otro abierto **espera su turno** y,
+cuando el actual se cierra, entra sobre el mismo velo (relevo, no dos modales
+encimados). Antes el nuevo pisaba al de abajo, que quedaba trabado con su velo
+tapando todo y una promesa que no se resolvía nunca. Para retirar UN modal
+—todavía en la fila o ya a la vista— se le pasa el `signal` de un
+`AbortController` y se aborta; `Modal.close()` cierra el que se ve, que puede
+ser otro. `arm` (ms) es para lo que se abre solo, sin que la persona lo pida:
+durante ese rato los botones no toman clicks y el foco arranca en el diálogo,
+así un click o un Enter que venía para otra cosa no contesta por ella.
 
 ---
 
@@ -374,22 +477,112 @@ stagger(container)             // escalona los hijos con --i
 initClickFlash(root)
 initScrollFades(root)          // cablea todo .op-scroll
 scrollFade(el)                 // uno solo
-bindSwitcher(el, onChange)
+bindSwitcher(el, onChange)     // segmentado o tabs: el indicador viaja, nace en su lugar
+bindToggle(el, onChange)       // un switch o un check: alterna, con role y aria-checked
 bindStepper(el, onChange)      // las flechas de un .op-stepper; repiten al aguantar
 toggleReveal(el, open)         // alto con grid 0fr → 1fr, sin animar height
 countTo(el, n, { format })     // un número que corre en vez de saltar
 tick(el)                       // destella un valor que acaba de cambiar
+
+swap(el, html, opts)           // reescribe un bloque sin cortes (tabla de abajo)
+swapText(el, text, opts)       // swap() de un texto (lo escapa)
+numero(el, v)                  // un número suelto: en su lugar, con destello
+frase(el, html)                // una frase: solo cifras → destello; otra frase → relevo
+valor(el, html)                // algo que cambia MUY seguido: siempre en su lugar
+deslizarAlto(el, cambio)       // hace cambio() y el alto viaja en vez de saltar
+deslizarAncho(el, cambio)      // lo mismo a lo ancho (un ítem de una fila, un rótulo)
+ocupar(btn, ocupado, html)     // botón libre ↔ ocupado: relevo, y el ancho viaja
+contador(el, n)                // un contador que aparece, cambia y se va (revive si vuelve)
+roll(el, to, paint, { from })  // corre desde lo que se ve AHORA (un % que llega de a pedazos)
+reconcile(box, items, opts)    // pone una lista al día fila por fila, por clave (FLIP)
+dissolve(old)                  // fundido: lo viejo, opaco y encima, se esfuma sobre lo nuevo
+glideSize(el, from)            // de un tamaño medido a mano al de ahora
+collapse(el) / expand(el)      // una fila que se va (o llega) plegándose: las de abajo acompañan
+replaceSoft(old, node)         // un nodo que reemplaza a otro en una fila (un ícono)
+
+calcar(host)                   // la vista que se va, a un calco que se esfuma (lo usa el router)
+repintar(root, poner)          // repinta sin perder el lugar (lo usa paint())
+asentarPlegables(root)         // los .op-plegable visibles, en su alto sin desplegarse
 ```
 
 `exit()` es el más importante y el que más se olvida: sin él, todo lo que se va
-del DOM parpadea.
+del DOM parpadea. Sobre algo que ya se está yendo, `exit()` y `collapse()`
+devuelven esa misma salida: nunca lo borran de golpe. Y lo que se está yendo
+se puede revivir: sacarle `data-state` antes de que termine lo deja en el DOM
+(así revive `contador()` el número que vuelve).
+
+**Nada se rehace con `innerHTML` si ya está a la vista.** Una lista que cambia
+(buscar, filtrar, quitar una fila) va con `reconcile()`: las filas que siguen
+son el mismo nodo y viajan a su lugar, las que se van se esfuman fuera del
+flujo y las nuevas entran cuando las viejas casi no se ven. Un bloque que se
+reescribe va por `swap()`, que elige según el caso:
+
+| Caso | Llamada | Qué hace |
+|---|---|---|
+| aparece (vacío → algo) | `swap(el, html)` | lo nuevo se funde |
+| se va (algo → vacío) | `swap(el, '')` | cada hijo termina de irse antes de salir del DOM |
+| cambian valores | `swap(el, html)` | en el lugar, sin volver a animar |
+| un estado por otro (pista → cargando → resultado, un rótulo por otro) | `swap(el, html, { relevo: true })` | lo viejo se esfuma en un calco encima, con su caja de antes; lo nuevo asoma cuando va por un tercio |
+| un número que avanza o retrocede | `swap(el, n, { dir: 1 })` / `{ dir: -1 }` | relevo con dirección: sube o baja (sigue en línea en una oración) |
+| un bloque GRANDE cambia de forma (una tabla que gana columnas) | `swap(el, html, { fundido: true })` | calco opaco (la niebla y los rellenos de atrás) encima del `th` sticky; lo nuevo entero y quieto debajo |
+
+`swap()` es el mismo que el de Onyx, así que lo que se escribe encima se porta
+copiando. Hasta octubre de 2026 el de Opal relevaba siempre (`{ dir, size }`,
+con celdas `.op-swap__item`): en una app vieja, lo que era `swap(el, html)` y
+tiene que cruzarse pasa a `{ relevo: true }`, y `{ size: true }` es
+`deslizarAncho(el, () => swap(el, html, { relevo: true }))`.
+
+- **Si solo cambia un número adentro de una frase, no releves la frase**: va
+  con `frase()` o, si el número está suelto, con `numero()`.
+- Mientras dura un relevo lo viejo sigue en el DOM, en `.op-swap-out--over`,
+  sin ids. Buscá lo nuevo con `:scope > …`.
+- **Un contador va con `contador()`, nunca mezclando `swap()` y `numero()`**
+  sobre el mismo nodo, y nace **vacío** en el HTML (no en «0»): si no, el
+  primer dato cuenta como cambio y destella.
+- `ocupar()` lee la marca `data-ocupado` del botón: uno que nace ocupado (la
+  vista se repintó en medio del trabajo) lleva `data-ocupado="1"` en su HTML.
+  Apagarlo (`disabled`) es de quien llama.
+- `deslizarAncho()` y `deslizarAlto()` con un relevo adentro esperan, al
+  achicarse, a que lo que se va casi no se vea; no hace falta una copia local
+  con la espera.
+
+Un número que llega de a pedazos va con `roll()`. Una superficie entera que
+cambia por otra (un panel) va con `dissolve()`, y su calco necesita fondo
+opaco. Una vista que se pone al día (unos ajustes) se arma una vez y después
+solo actualiza lo que cambió: los switches se mueven, las cápsulas viajan y lo
+que aparece según otro ajuste se despliega con `.op-reveal` o `.op-plegable`.
+Andan todos en **Piezas** (Movimiento, Reescribir un bloque, Ocupado y
+contadores, Mostrar y esconder).
+
+Las duraciones y las curvas de lo que se anima desde JS salen de `tokens.css`
+(`--op-t-2`, `--op-t-3`, `--op-t-out`, `--op-ease`, `--op-ease-both`): si
+cambiás una, cambia todo junto.
+
+### Mostrar y esconder: `.op-plegable`
+
+Lo que se prende con `el.hidden = …` (una barra, una pista, un dato de la
+statusbar) va con `.op-plegable`: el alto se pliega hasta 0 mientras se
+desvanece y recién al final pasa a `display: none`. `.op-plegable--ancho` hace
+lo mismo a lo ancho, en una fila. El JS no cambia: sigue siendo `hidden`.
+
+- En una columna con `gap`, la columna declara `--op-plegable-gap` y el gap se
+  pliega junto con el alto (un `.op-field` ya se lo da a sus pistas; la
+  statusbar, a sus `--ancho`).
+- Uno que **nace visible** se despliega desde 0. Al repintar no pasa
+  (`repintar()` llama a `asentarPlegables()`); al navegar, si la vista nueva
+  tiene uno visible, llamala vos después de pintar o crece debajo del calco.
+- Plegá lo que vive **adentro** de una hoja, no la hoja de vidrio: su caja
+  cambiando en cada cuadro obliga a recalcular el blur.
 
 ### Clases de animación
 
 Entradas: `.op-in-fade` · `.op-in-rise` · `.op-in-glide` · `.op-in-pop`.
 Estado: `.op-spinning` · `.op-breathing` · `.op-shaking` · `.op-skeleton` ·
 `.op-ticked`. `.op-view` es la transición de vista (la aplica el router).
-`.op-reveal` con `.is-open` para el alto.
+`.op-reveal` con `.is-open` para el alto; `.op-plegable` y
+`.op-plegable--ancho` para lo que se prende con `hidden`. Las de `swap()`
+(`.op-swap-in`, `.op-swap-out`, `.op-swap-out--over`) las pone el JS. Fundido:
+`.op-dissolving` es el calco que se va.
 
 ---
 
@@ -402,7 +595,7 @@ Router.define({
 }, document.getElementById('view'));
 
 Router.go('item', 'n-0003');
-Router.refresh();                 // remonta la actual
+Router.refresh();                 // repinta la actual, sin perder el lugar
 Router.onLeave(store.onEvent(f)); // limpieza de la vista que se está montando
 Router.onChange((a, desde) => {});
 Router.current / .name / .param
@@ -411,6 +604,24 @@ Router.current / .name / .param
 `onLeave` es el que evita la fuga: las vistas que se suscriben a algo tienen que
 soltarlo al navegar, o cada navegación deja basura escuchando y la app se
 degrada sola.
+
+**Cambiar de vista es un fundido.** `go()` pasa la vista que se va a un calco
+(`calcar()` en `motion.js`, clase `.op-main--saliente`) que queda encima, en la
+misma celda, y se esfuma en `--op-t-2`. La nueva está entera y quieta debajo
+desde el primer cuadro. El calco es opaco: su fondo es la misma niebla de la
+ventana (`--op-sustrato` con `background-attachment: fixed`), así que calza
+pixel a pixel con lo de atrás y la pantalla está tapada en todo momento. Antes
+la vieja se iba de un cuadro al otro y la nueva arrancaba desde transparente.
+El afloramiento (`.op-view`) queda para el arranque, cuando no hay nada que se
+vaya: si aflorara mientras se funde la vieja, la pantalla se destaparía hasta
+la mitad y el encabezado, que las dos tienen en el mismo lugar, temblaría.
+
+**Repintar la misma es el mismo fundido, sin perder el lugar.** `refresh()` (o
+cualquier `paint()` sobre una vista que ya está) usa `repintar()`: el scroll,
+el foco, los `.op-reveal` abiertos y la posición de las cápsulas se fotografían
+antes y se devuelven después (se reconocen por `id`), lo nuevo se asienta sin
+volver a entrar, y `countTo()` escribe el valor en vez de contar desde 0. Si la
+opción de un segmentado cambió, la cápsula viaja desde donde estaba.
 
 ---
 

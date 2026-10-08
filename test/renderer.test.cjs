@@ -9,7 +9,7 @@
    La regla que guía (de Opal): **medí dónde CAE una cosa, no solo si existe**.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -58,6 +58,11 @@ app.whenReady().then(async () => {
   // El updater registra sus canales aunque no corra (en dev no actualiza nada).
   let winRef = null;
   require(path.join(ROOT, 'src', 'updater.cjs')).init(() => winRef);
+  /* El portapapeles de verdad es de la persona que corre el humo: el «Pegar»
+     del menú de los campos lee uno de mentira. */
+  const PEGADO = 'pegado de prueba';
+  ipcMain.removeHandler('clip:read');
+  ipcMain.handle('clip:read', () => ({ ok: true, data: PEGADO }));
 
   const win = new BrowserWindow({
     x: -20000, y: -20000, width: W, height: H,
@@ -66,7 +71,10 @@ app.whenReady().then(async () => {
   });
   winRef = win;
   const errores = [];
-  win.webContents.on('console-message', (e) => { if (e.level >= 2) errores.push(`${e.level}: ${e.message}`); });
+  /* El nivel llega como texto ('warning', 'error') desde Electron 35: la
+     comparación con números de antes no juntaba nada, y «sin errores» salía
+     siempre, hubiera errores o no. */
+  win.webContents.on('console-message', (e) => { if (e.level === 'warning' || e.level === 'error') errores.push(`${e.level}: ${e.message}`); });
   await win.loadFile(path.join(ROOT, 'renderer', 'index.html'));
   win.show();
   await sleep(1800);
@@ -217,6 +225,28 @@ app.whenReady().then(async () => {
     return ['fontFamily','fontSize','lineHeight','paddingTop','paddingLeft','letterSpacing'].every(k => a[k] === b[k]); })()`);
   ok('el resaltado y el textarea comparten métrica (alineados al píxel)', hl);
 
+  /* El click derecho en el editor: Electron no trae menú contextual en los
+     campos (de Opal, FieldMenu). Con un click derecho de verdad, por el canal
+     de entrada, y «Pegar» lee el portapapeles de mentira de arriba. */
+  const menuVivo = `document.querySelector('.op-menu:not([data-state="closing"])')`;
+  await js(`(() => { const t = document.querySelector('.st-editor__input'); t.focus(); t.value = 'SELECT 1'; t.dispatchEvent(new Event('input')); t.setSelectionRange(6, 6); return true; })()`);
+  const punto = await js(`(() => { const r = document.querySelector('.st-editor__input').getBoundingClientRect(); return { x: Math.round(r.left + 40), y: Math.round(r.top + 14) }; })()`);
+  win.webContents.sendInputEvent({ type: 'mouseDown', x: punto.x, y: punto.y, button: 'right', clickCount: 1 });
+  win.webContents.sendInputEvent({ type: 'mouseUp', x: punto.x, y: punto.y, button: 'right', clickCount: 1 });
+  await sleep(450);
+  const menuCampo = await js(`(() => { const m = ${menuVivo}; if (!m) return null; const r = m.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top) }; })()`);
+  ok('el click derecho en el editor abre el menú del campo, donde fue el click', !!menuCampo && Math.abs(menuCampo.x - punto.x) <= 12 && Math.abs(menuCampo.y - punto.y) <= 12, JSON.stringify({ punto, menuCampo }));
+  const cursor = await js(`document.querySelector('.st-editor__input').selectionStart`);
+  const pegar = await js(`(() => { const b = [...document.querySelectorAll('.op-menu .op-menuitem')].find((x) => x.textContent.includes('Pegar')); if (!b) return null; const r = b.getBoundingClientRect(); return { x: Math.round(r.left + 20), y: Math.round(r.top + r.height / 2) }; })()`);
+  if (pegar) {
+    win.webContents.sendInputEvent({ type: 'mouseDown', x: pegar.x, y: pegar.y, button: 'left', clickCount: 1 });
+    win.webContents.sendInputEvent({ type: 'mouseUp', x: pegar.x, y: pegar.y, button: 'left', clickCount: 1 });
+  }
+  await sleep(450);
+  const pegado = await js(`(() => { const t = document.querySelector('.st-editor__input'); return { valor: t.value, foco: document.activeElement === t, menu: !!${menuVivo} }; })()`);
+  ok('«Pegar» escribe lo copiado donde estaba el cursor', pegado.valor === 'SELECT 1'.slice(0, cursor) + PEGADO + 'SELECT 1'.slice(cursor), JSON.stringify({ ...pegado, cursor }));
+  ok('y el editor no pierde el foco (el menú no se lo lleva)', pegado.foco && !pegado.menu, JSON.stringify(pegado));
+
   console.log('\n9. Clicks de verdad (hit-testing)');
   /* Todo lo de arriba clickea con el.click(), que se saltea el hit-testing: si
      algo invisible tapa la ventana, esos clicks andan igual y el usuario no.
@@ -257,7 +287,20 @@ app.whenReady().then(async () => {
   const rail2 = await rect('.op-rail');
   ok('el rail se volvió a plegar', rail2 && rail2.w < 1, JSON.stringify(rail2));
 
-  console.log('\n11. Consola limpia');
+  console.log('\n11. Las reglas de oro');
+  const glifos = await js(`(() => {
+    const malo = /[\\u2190-\\u21FF\\u2300-\\u23FF\\u25A0-\\u27BF\\u2B00-\\u2BFF\\uFE0F\\u{1F300}-\\u{1FAFF}]/u;
+    const out = []; const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n; while ((n = w.nextNode())) if (malo.test(n.nodeValue)) out.push(n.nodeValue.trim().slice(0, 40));
+    return out;
+  })()`);
+  ok('cero emojis y glifos unicode en la UI', glifos.length === 0, JSON.stringify(glifos));
+  ok('cero title= nativo', (await js(`document.querySelectorAll('[title]').length`)) === 0);
+  /* Sin esto, lo que Chromium dibuja por su cuenta (el calendario de un campo
+     de fecha, las sugerencias de un campo) sale con su blanco de fábrica. */
+  ok('la interfaz se declara oscura (color-scheme)', (await js(`getComputedStyle(document.documentElement).colorScheme`)) === 'dark');
+
+  console.log('\n12. Consola limpia');
   const limpios = errores.filter((e) => !/gpu/i.test(e));
   ok('sin errores de renderer', limpios.length === 0, limpios.join(' | '));
 

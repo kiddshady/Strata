@@ -14,9 +14,9 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { Icons } from './icons.js';
-import { Tooltip, Toast, Menu } from './overlays.js';
+import { Tooltip, Toast, Menu, FieldMenu } from './overlays.js';
 import Router from './router.js';
-import { initClickFlash, initScrollFades, raf2, toggleReveal } from './motion.js';
+import { initClickFlash, initScrollFades, raf2, toggleReveal, contador } from './motion.js';
 import { esc, paint, head, attempt, colorToken } from './ui.js';
 import { fmtBytes, fmtInt, fmtNum } from './format.js';
 
@@ -184,7 +184,8 @@ function markActive() {
 function updateCounts() {
   document.querySelectorAll('#rail-nav [data-count]').forEach((el) => {
     const n = S.counts[el.dataset.count];
-    el.textContent = n == null ? '' : compact(n);
+    // Aparece y se va fundiéndose, y cambia en su lugar con destello (motion.js).
+    contador(el, n == null ? '' : compact(n));
     if (n != null) el.dataset.tip = fmtInt(n);
   });
 }
@@ -289,7 +290,7 @@ function wireShell() {
   const maxBtn = document.getElementById('win-max');
   maxBtn.addEventListener('click', () => w.toggleMaximize());
   w.onMaximized((isMax) => {
-    maxBtn.innerHTML = Icons.svg(isMax ? 'winRestore' : 'winMax');
+    maxBtn.classList.toggle('is-b', isMax);   // los dos íconos se cruzan (.op-iconswap)
     maxBtn.setAttribute('aria-label', isMax ? 'Restaurar' : 'Maximizar');
   });
   // Doble click en la titlebar maximiza, como en cualquier ventana de Windows.
@@ -344,11 +345,13 @@ function wireShell() {
     }
   });
 
-  // Enter/Espacio sobre una reciente (son div role=button, no <button>).
+  /* Enter/Espacio sobre una reciente (son div role=button, no <button>). Sobre
+     la fila misma, no sobre un botón de adentro: Enter en «Olvidar» abría la
+     base Y la olvidaba a la vez. */
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const row = e.target.closest?.('[data-openpath][role="button"]');
-    if (!row) return;
+    if (!row || e.target !== row) return;
     e.preventDefault();
     openDatabase(row.dataset.openpath);
   });
@@ -413,6 +416,21 @@ function syncWindowColor() {
   if (hex) api.win.setBackground(hex);
 }
 
+/* Un archivo de datos ilegible (ajustes, recientes) se aparta (store.cjs) y la
+   app arranca sin él. Sin este aviso, para la persona sus datos simplemente
+   desaparecieron. */
+async function tellAsides() {
+  const list = await api.asides().catch(() => []);
+  if (!list.length) return;
+  const files = [...new Set(list.map((a) => a.file))];
+  Toast.show({
+    tone: 'error',
+    duration: 0,
+    title: files.length === 1 ? `${files[0]} estaba dañado` : `${files.join(', ')} estaban dañados`,
+    text: `${files.length === 1 ? 'Quedó' : 'Quedaron'} aparte en la carpeta de datos, con «.corrupto-» en el nombre, y la app arrancó sin ${files.length === 1 ? 'él' : 'ellos'}.`,
+  });
+}
+
 /* ══ Piezas (solo en --dev) ══════════════════════════════════════════════════
    La vitrina de Opal: todos los primitivos vivos. Sirve como referencia al
    tocar la interfaz; en la app normal no aparece. */
@@ -427,6 +445,7 @@ async function viewPiezas() {
 async function boot() {
   Icons.mount(document);
   Tooltip.init();
+  FieldMenu.init();           // el click derecho en un campo: cortar, copiar, pegar
   initClickFlash();
   initScrollFades();
   wireShell();
@@ -457,6 +476,7 @@ async function boot() {
   document.querySelector('.op-brand').dataset.tip = `Strata ${S.info.version}`;
   updateChrome();
   api.onOpenFile((p) => openDatabase(p));
+  tellAsides();
 
   /* Qué abrir al arrancar: lo que vino por argv (doble click en un .db) gana;
      si no, la última base, si quedó abierta al cerrar y sigue existiendo. */

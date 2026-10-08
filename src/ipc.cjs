@@ -12,7 +12,7 @@
    real, así el renderer escribe try/catch normal en vez de chequear banderas.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const { ipcMain, app, dialog, shell, BrowserWindow } = require('electron');
+const { ipcMain, app, dialog, shell, BrowserWindow, clipboard } = require('electron');
 const path = require('path');
 const store = require('./store.cjs');
 const recents = require('./recents.cjs');
@@ -67,6 +67,14 @@ function register() {
     electron: process.versions.electron,
     dev: process.argv.includes('--dev'),
   }));
+  // Los archivos de datos que se apartaron por ilegibles: la app lo avisa.
+  handle('store:asides', () => store.asides().map((a) => ({ file: path.basename(a.file), dead: a.dead })));
+
+  /* El texto del portapapeles, para el "Pegar" del menú de los campos. Desde
+     la página, leerlo pide un permiso; acá no. Con tope: un portapapeles
+     gigante no tiene por qué cruzar entero. Desde Electron 44 el
+     portapapeles del proceso principal es asíncrono, como el de la web. */
+  handle('clip:read', async () => (await clipboard.readText()).slice(0, 100000));
 
   handle('app:pending-file', () => {
     const p = pendingFile;

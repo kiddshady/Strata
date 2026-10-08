@@ -9,7 +9,7 @@ import { Icons } from '../../icons.js';
 import { Menu, Toast } from '../../overlays.js';
 import { esc, paint, head, attempt } from '../../ui.js';
 import { fmtInt, fmtBytes } from '../../format.js';
-import { bindSwitcher, initScrollFades } from '../../motion.js';
+import { bindSwitcher, initScrollFades, frase } from '../../motion.js';
 import Router from '../../router.js';
 import { S, api, obj, alive, KIND, hasRows, saveSettings, copyValue, countLabel } from '../state.js';
 import { createGrid } from '../grid.js';
@@ -51,7 +51,7 @@ export async function viewTable(name) {
     if (o.ncol != null) parts.push(countLabel(o.ncol, 'columna'));
     if (o.withoutRowid) parts.push('WITHOUT ROWID');
     if (o.strict) parts.push('STRICT');
-    sub.textContent = parts.join(' · ');
+    frase(sub, esc(parts.join(' · ')));   // si solo cambia la cifra, destella; si cambia la frase, relevo
   };
   setSub(S.counts[o.name] ?? null);
 
@@ -152,8 +152,10 @@ async function mountData(o, host, { isAlive, setSub }) {
   function status() {
     const cur = grid.cursor;
     const t = grid.total;
-    if (t == null) { statusEl.innerHTML = `${Icons.spinner()} contando…`; return; }
-    statusEl.textContent = cur ? `fila ${fmtInt(cur.r + 1)} de ${fmtInt(t)}` : countLabel(t, 'fila', 'filas');
+    // Lo que ya se ve se pone al día, no se rehace (motion.js): el cursor que
+    // avanza destella en su lugar; «contando…» → «N filas» es un relevo.
+    if (t == null) { frase(statusEl, `${Icons.spinner()} contando…`); return; }
+    frase(statusEl, esc(cur ? `fila ${fmtInt(cur.r + 1)} de ${fmtInt(t)}` : countLabel(t, 'fila', 'filas')));
   }
 
   function renderSort() {
@@ -175,7 +177,7 @@ async function mountData(o, host, { isAlive, setSub }) {
       if (!q.filter) { S.counts[o.name] = n; setSub(n); }
       status();
     } catch (err) {
-      if (my === countSeq && err.message !== 'Cancelado') statusEl.textContent = err.message;
+      if (my === countSeq && err.message !== 'Cancelado') frase(statusEl, esc(err.message));
     }
   }
 

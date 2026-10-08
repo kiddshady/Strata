@@ -76,6 +76,7 @@ src/db-worker.cjs     better-sqlite3, en un utilityProcess aparte
 src/sqlread.cjs       lo puro: SELECT con orden/filtro, codificar celdas
 src/recents.cjs       recientes (las lleva el main)
 src/store.cjs         JSON atómico de Opal: ajustes y recientes
+src/recover.cjs       de Opal: si se cae el proceso de la interfaz, la ventana se recarga sola
 renderer/js/app.js    shell: rail, statusbar, comandos, atajos
 renderer/js/strata/   grid, inspector, celdas, SQL y las vistas
 renderer/css/strata.css   lo propio; el resto es Opal intacto

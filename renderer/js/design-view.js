@@ -10,7 +10,10 @@
 
 import { Icons } from './icons.js';
 import { Toast, Menu, Modal } from './overlays.js';
-import { bindSwitcher, bindStepper, raf2 } from './motion.js';
+import {
+  bindSwitcher, bindToggle, bindStepper, raf2, reconcile, roll, swap, swapText, dissolve,
+  frase, deslizarAncho, ocupar, contador,
+} from './motion.js';
 import { mark, status, copy, colorToken } from './ui.js';
 
 /* ── Las tres perillas ───────────────────────────────────────────────────────
@@ -29,7 +32,7 @@ const swatch = (name, varName) => `
   <div class="op-col" style="gap:6px">
     <div style="height:52px;border-radius:8px;background:var(${varName});box-shadow:var(--op-hairline)"></div>
     <span class="op-meta">${name}</span>
-    <span class="op-mono op-dim2" style="font-size:10px">${varName}</span>
+    <span class="op-mono op-dim" style="font-size:10px">${varName}</span>
   </div>`;
 
 const fadeDemoRows = Array.from({ length: 14 }, (_, i) =>
@@ -51,22 +54,22 @@ export function designHTML() {
         <div class="op-card" style="padding:18px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px 28px;align-items:start">
             <div class="op-field">
-              <label class="op-field__label">Desenfoque <span class="op-mono op-dim2" id="blur-val"></span></label>
+              <label class="op-field__label">Desenfoque <span class="op-mono op-dim" id="blur-val"></span></label>
               <input type="range" class="op-slider" id="knob-blur" min="0" max="40" step="1">
               <span class="op-field__hint">EL carácter de Opal. Bajo, el vidrio es casi transparente; arriba de 28, esmerilado profundo.</span>
             </div>
             <div class="op-field">
-              <label class="op-field__label">Niebla <span class="op-mono op-dim2" id="fog-val"></span></label>
+              <label class="op-field__label">Niebla <span class="op-mono op-dim" id="fog-val"></span></label>
               <input type="range" class="op-slider" id="knob-fog" min="0" max="30" step="1">
               <span class="op-field__hint">Cuánta luz hay detrás del vidrio. En 0, el blur se queda sin nada que repartir.</span>
             </div>
             <div class="op-field">
-              <label class="op-field__label">Matiz <span class="op-mono op-dim2" id="hue-val"></span></label>
+              <label class="op-field__label">Matiz <span class="op-mono op-dim" id="hue-val"></span></label>
               <input type="range" class="op-slider" id="knob-hue" min="0" max="360" step="1">
               <span class="op-field__hint">Latente: con la temperatura en 0 no actúa. Queda esperando a la app que lo despierte.</span>
             </div>
             <div class="op-field">
-              <label class="op-field__label">Temperatura <span class="op-mono op-dim2" id="tint-val"></span></label>
+              <label class="op-field__label">Temperatura <span class="op-mono op-dim" id="tint-val"></span></label>
               <input type="range" class="op-slider" id="knob-tint" min="0" max="60" step="1">
               <span class="op-field__hint">Cuánta croma. El default de Opal es 0: la variación la pone la niebla, no el tinte.</span>
             </div>
@@ -209,7 +212,7 @@ export function designHTML() {
               </div>
             </div>`).join('')}
         </div>
-        <div class="op-row op-meta op-dim2" style="gap:20px;margin-top:22px;flex-wrap:wrap">
+        <div class="op-row op-meta" style="gap:20px;margin-top:22px;flex-wrap:wrap">
           ${[['circle', 'círculo'], ['square', 'cuadrado'], ['diamond', 'rombo'], ['hex', 'hexágono']]
             .map(([k, label]) => `<span class="op-row" style="gap:7px">${mark('done', k)}${label}</span>`).join('')}
         </div>`)}
@@ -223,6 +226,8 @@ export function designHTML() {
           <button class="op-btn op-btn--danger-solid op-flashable">Borrar todo</button>
           <button class="op-btn op-btn--secondary" disabled>Deshabilitado</button>
           <button class="op-iconbtn" data-tip="Botón de ícono"><i data-icon="settings"></i></button>
+          <button class="op-iconbtn op-iconswap" id="demo-iconswap" data-tip="Copiar (dos íconos que se cruzan)"><i data-icon="copy"></i><i data-icon="check"></i></button>
+          <button class="op-iconbtn" data-tip="Apagado" disabled><i data-icon="trash"></i></button>
           <button class="op-btn op-btn--sm op-btn--secondary">Chico</button>
           <button class="op-btn op-btn--lg op-btn--secondary">Grande</button>
         </div>`)}
@@ -231,7 +236,7 @@ export function designHTML() {
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px">
           <div class="op-field">
             <label class="op-field__label">Nombre</label>
-            <input class="op-input" value="Sin título" spellcheck="false">
+            <input class="op-input" id="demo-input" value="Sin título" spellcheck="false">
           </div>
           <div class="op-field">
             <label class="op-field__label">Modelo</label>
@@ -295,6 +300,80 @@ export function designHTML() {
           <button class="op-btn op-btn--secondary op-flashable" id="demo-confirm">Confirmación destructiva</button>
           <button class="op-btn op-btn--secondary op-flashable" id="demo-toast">Toast</button>
           <button class="op-btn op-btn--secondary op-flashable" id="demo-toast-err">Toast de error</button>
+        </div>`)}
+
+      ${section('Movimiento', 'Lo que ya está a la vista no se rehace con <span class="op-mono">innerHTML</span>: se pone al día. Una lista que cambia va con <span class="op-mono">reconcile()</span> (las filas que siguen son el mismo nodo y viajan a su lugar), un número que sube o baja con <span class="op-mono">swap(el, n, { dir })</span>, uno que llega de a pedazos con <span class="op-mono">roll()</span>, un rótulo que cambia con <span class="op-mono">deslizarAncho()</span> y un relevo adentro, y un panel entero que cambia por otro con <span class="op-mono">dissolve()</span>. Tipeá, sumá, copiá y alterná: nada aparece ni desaparece de golpe.', `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start" id="mv">
+          <div class="op-col" style="gap:10px">
+            <div class="op-row" style="gap:8px">
+              <div class="op-inputwrap op-grow"><i data-icon="search"></i><input class="op-input" id="mv-filtro" placeholder="Filtrar piezas…" spellcheck="false"></div>
+              <button class="op-iconbtn" id="mv-invertir" data-tip="Invertir el orden"><i data-icon="sliders"></i></button>
+            </div>
+            <div class="op-list" id="mv-lista"></div>
+          </div>
+          <div class="op-col" style="gap:20px">
+            <div class="op-row" style="gap:16px">
+              <div class="op-stat"><span class="op-stat__value op-num" id="mv-total">0</span><span class="op-stat__label">Sumado</span></div>
+              <button class="op-btn op-btn--secondary op-flashable" id="mv-sumar"><i data-icon="plus"></i> Sumar 1.250</button>
+            </div>
+            <div class="op-row" style="gap:8px">
+              <button class="op-iconbtn op-iconbtn--sm" id="mv-menos" data-tip="Uno menos"><i data-icon="minus"></i></button>
+              <button class="op-iconbtn op-iconbtn--sm" id="mv-mas" data-tip="Uno más"><i data-icon="plus"></i></button>
+              <p class="op-meta" id="mv-frase">Quedan <span id="mv-cuenta">3</span> en la fila, y la oración no se mueve.</p>
+            </div>
+            <div><button class="op-btn op-btn--secondary" id="mv-copiar"><i data-icon="copy"></i> Copiar</button></div>
+            <div class="op-col" style="gap:8px">
+              <div id="mv-paneles" style="display:grid"></div>
+              <div><button class="op-btn op-btn--ghost op-btn--sm op-flashable" id="mv-alternar"><i data-icon="retry"></i> Alternar el panel</button></div>
+            </div>
+          </div>
+        </div>`)}
+
+      ${section('Reescribir un bloque', 'Un <span class="op-mono">innerHTML</span> a secas es un corte: lo viejo se va en el mismo cuadro en que llega lo nuevo. <span class="op-mono">swap(el, html, { relevo })</span> distingue los casos: lo que <b>aparece</b> se funde, lo que <b>se va</b> termina de irse, un estado que <b>reemplaza</b> a otro hace relevo en el mismo lugar, y un cambio de <b>valores</b> se escribe en el lugar sin volver a animar. Y una frase que se pone al día va con <span class="op-mono">frase()</span>: si solo cambian sus cifras destella en su lugar; si cambia la frase, relevo. Tocá los estados en cualquier orden, rápido también.', `
+        <div class="op-row" style="gap:8px;margin-bottom:12px;flex-wrap:wrap" id="demo-swap-btns">
+          <button class="op-btn op-btn--ghost op-btn--sm" data-swap="pista">Pista</button>
+          <button class="op-btn op-btn--ghost op-btn--sm" data-swap="cargando">Cargando</button>
+          <button class="op-btn op-btn--ghost op-btn--sm" data-swap="resultado">Resultado</button>
+          <button class="op-btn op-btn--ghost op-btn--sm" data-swap="vacio">Vaciar</button>
+        </div>
+        <div class="op-card" style="max-width:420px;margin-bottom:16px">
+          <div class="op-card__body">
+            <div id="demo-swap" style="display:flex;align-items:center;gap:10px;min-height:40px"></div>
+          </div>
+        </div>
+        <div class="op-row" style="gap:8px;align-items:center">
+          <button class="op-btn op-btn--ghost op-btn--sm" id="demo-frase-mas">Bajar un poco más</button>
+          <button class="op-btn op-btn--ghost op-btn--sm" id="demo-frase-fin">Terminar</button>
+          <span class="op-meta" id="demo-frase"></span>
+        </div>`)}
+
+      ${section('Ocupado y contadores', 'Dos piezas para lo que cambia con la app andando, armadas sobre <span class="op-mono">swap()</span>. <span class="op-mono">ocupar(btn, ocupado, html)</span>: un botón que hace un trabajo pasa a «ocupado» con un relevo en el lugar, y su ancho viaja en vez de saltar — al achicarse espera a que el rótulo que se va casi no se vea, así la caja no lo corta. El vecino acompaña. <span class="op-mono">contador(el, n)</span>: un contador que solo se ve cuando hay algo; aparece y se va fundiéndose, y cuando cambia se escribe en su lugar con un destello.', `
+        <div class="op-row" style="gap:8px;margin-bottom:16px;align-items:center">
+          <button class="op-btn op-btn--primary op-flashable" id="demo-ocupar" data-ocupado="0"><i data-icon="download"></i> Exportar</button>
+          <span class="op-meta" id="demo-ocupar-vecino">el vecino acompaña</span>
+        </div>
+        <div class="op-row" style="gap:8px;align-items:center">
+          <button class="op-btn op-btn--ghost op-btn--sm" id="demo-contar-mas">Sumar</button>
+          <button class="op-btn op-btn--ghost op-btn--sm" id="demo-contar-vaciar">Vaciar</button>
+          <div class="op-navitem" style="width:200px;pointer-events:none"><i data-icon="grid"></i> Páginas <span class="op-navitem__count" id="demo-contador"></span></div>
+        </div>`)}
+
+      ${section('Mostrar y esconder', 'Lo que se prende con <span class="op-mono">el.hidden</span> no aparece de golpe: con <span class="op-mono">.op-plegable</span> el alto se pliega mientras se desvanece, y lo de abajo se corre de a poco en vez de saltar. <span class="op-mono">.op-plegable--ancho</span> hace lo mismo en una fila, con los de al lado. El JS no cambia: sigue siendo <span class="op-mono">hidden</span>. Si manejás una clase y tenés un envoltorio, <span class="op-mono">.op-reveal</span>.', `
+        <div class="op-row" style="gap:8px;margin-bottom:12px">
+          <button class="op-btn op-btn--ghost op-btn--sm" id="demo-plegar">Opciones avanzadas</button>
+          <button class="op-btn op-btn--ghost op-btn--sm" id="demo-plegar-ancho">Dato del medio</button>
+        </div>
+        <div class="op-card" style="max-width:420px">
+          <div class="op-card__body">
+            <div class="op-plegable" id="demo-plegable" hidden>
+              <div class="op-meta" style="padding-bottom:12px">Lo que estaba escondido. Todo lo de abajo se corre con él.</div>
+            </div>
+            <div class="op-row" id="demo-plegable-fila" style="gap:8px;--op-plegable-gap:8px">
+              <span class="op-chip">primero</span>
+              <span class="op-chip op-plegable--ancho" id="demo-plegable-ancho">el del medio</span>
+              <span class="op-chip">último</span>
+            </div>
+          </div>
         </div>`)}
 
       ${section('Métricas y medidores', '', `
@@ -385,11 +464,98 @@ export function designHTML() {
     </div>`;
 }
 
+/* ── Movimiento ──────────────────────────────────────────────────────────────
+   Los helpers de motion.js, cada uno en el caso para el que existe. */
+const PIEZAS = ['Tooltip', 'Toast', 'Menú', 'Modal', 'Segmentado', 'Pestañas', 'Tabla', 'Lista'];
+const PANELES = [
+  { title: 'Panel A', text: 'Lo nuevo ya está quieto debajo; lo viejo, opaco y encima, se esfuma.' },
+  { title: 'Panel B', text: 'La pantalla está tapada todo el tiempo: no asoma el fondo en el medio.' },
+];
+
+function wireMotion(rootEl) {
+  const lista = rootEl.querySelector('#mv-lista');
+  if (!lista) return;
+  const filtro = rootEl.querySelector('#mv-filtro');
+  let alReves = false;
+  const pintar = (enter = true) => {
+    const q = filtro.value.trim().toLowerCase();
+    const nombres = PIEZAS.filter((n) => n.toLowerCase().includes(q));
+    if (alReves) nombres.reverse();
+    reconcile(lista, nombres.map((n) => ({
+      key: n,
+      html: `<div class="op-listitem">${mark('done')}<div class="op-listitem__main"><span class="op-listitem__title">${n}</span></div></div>`,
+    })), { enter });
+  };
+  pintar(false);
+  filtro.addEventListener('input', () => pintar());
+  rootEl.querySelector('#mv-invertir').addEventListener('click', () => { alReves = !alReves; pintar(); });
+
+  // Un número que llega de a pedazos: cada click retoma la carrera desde donde iba.
+  const total = rootEl.querySelector('#mv-total');
+  const fmt = (v) => Math.round(v).toLocaleString('es-AR');
+  let suma = 0;
+  roll(total, 0, (v) => { total.textContent = fmt(v); });
+  rootEl.querySelector('#mv-sumar').addEventListener('click', () => {
+    suma += 1250;
+    roll(total, suma, (v) => { total.textContent = fmt(v); });
+  });
+
+  // Un número en medio de una oración: sube o baja en su lugar, sin partirla.
+  const cuenta = rootEl.querySelector('#mv-cuenta');
+  let n = 3;
+  const mover = (d) => {
+    const v = Math.max(0, n + d);
+    if (v === n) return;
+    n = v;
+    swapText(cuenta, String(n), { dir: d });
+  };
+  rootEl.querySelector('#mv-menos').addEventListener('click', () => mover(-1));
+  rootEl.querySelector('#mv-mas').addEventListener('click', () => mover(1));
+
+  // Un rótulo que cambia: relevo en el lugar, y la caja va de un ancho al otro
+  // en vez de saltar (al achicarse, espera a que el rótulo viejo casi no se vea).
+  const copiar = rootEl.querySelector('#mv-copiar');
+  const rotular = (html) => deslizarAncho(copiar, () => swap(copiar, html, { relevo: true }));
+  let vuelta = null;
+  copiar.addEventListener('click', () => {
+    rotular(`${Icons.svg('check')} Copiado`);
+    clearTimeout(vuelta);
+    vuelta = setTimeout(() => rotular(`${Icons.svg('copy')} Copiar`), 1600);
+  });
+
+  // Un panel entero que cambia por otro. El panel es opaco a propósito: el
+  // calco que se esfuma tiene que tapar a lo nuevo, o se verían los dos.
+  const paneles = rootEl.querySelector('#mv-paneles');
+  let cual = 0;
+  const panel = (p) => {
+    const el = document.createElement('div');
+    el.className = 'op-card';
+    el.style.cssText = 'grid-area:1/1;background:color-mix(in srgb, #fff 5.5%, var(--op-bg))';
+    el.innerHTML = '<div class="op-card__body"><div class="op-subtitle"></div><p class="op-meta" style="margin-top:6px;line-height:1.65"></p></div>';
+    el.querySelector('.op-subtitle').textContent = p.title;
+    el.querySelector('p').textContent = p.text;
+    return el;
+  };
+  paneles.appendChild(panel(PANELES[0]));
+  rootEl.querySelector('#mv-alternar').addEventListener('click', () => {
+    const viejo = [...paneles.children].find((c) => c.dataset.state !== 'closing');
+    cual = 1 - cual;
+    paneles.prepend(panel(PANELES[cual]));
+    dissolve(viejo);
+  });
+}
+
 const DEMO_MENU = [
   { groupLabel: 'Acciones' },
   { label: 'Abrir', icon: 'external', key: 'Ctrl O' },
   { label: 'Editar', icon: 'edit' },
   { label: 'Duplicar', icon: 'duplicate', selected: true },
+  // Lo que ahora no se puede: apagado, sin hover, y las flechas lo saltean.
+  { label: 'Pegar', icon: 'copy', key: 'Ctrl V', disabled: true },
+  // `dot`: un puntito de color en vez de ícono (una etiqueta, un tono).
+  { groupLabel: 'Etiqueta' },
+  { label: 'Destacado', dot: 'var(--op-accent)' },
+  { label: 'Archivado', dot: 'var(--op-text-4)' },
   { sep: true },
   { label: 'Eliminar', icon: 'trash', danger: true },
 ];
@@ -566,10 +732,8 @@ export function wireDesign(rootEl) {
   }
 
   /* Controles */
-  rootEl.querySelectorAll('[data-toggle]').forEach((b) =>
-    b.addEventListener('click', () => b.classList.toggle('is-on')));
-  rootEl.querySelectorAll('[data-check]').forEach((b) =>
-    b.addEventListener('click', () => b.classList.toggle('is-on')));
+  // bindToggle: alterna y además dice qué es y cómo está (role, aria-checked).
+  rootEl.querySelectorAll('[data-toggle], [data-check]').forEach((b) => bindToggle(b));
 
   const seg = rootEl.querySelector('#demo-seg');
   if (seg) bindSwitcher(seg, () => {});
@@ -586,15 +750,73 @@ export function wireDesign(rootEl) {
   const stepper = rootEl.querySelector('#demo-stepper');
   if (stepper) bindStepper(stepper);
 
+  // El valor elegido se cruza con el anterior (swap): no cambia de un cuadro al otro.
+  let modelo = 'claude-opus-5';
   rootEl.querySelector('#demo-select')?.addEventListener('click', (e) => {
     const btn = e.currentTarget;
     const val = btn.querySelector('.op-select__value');
     Menu.show(btn, ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4.5', 'minimax-m3', 'qwen3.5-9b'].map((m) => ({
       label: m,
-      selected: val.textContent === m,
-      onSelect: () => { val.textContent = m; },
+      selected: modelo === m,
+      onSelect: () => { modelo = m; swapText(val, m, { relevo: true }); },
     })));
   });
+
+  /* swap(): los cuatro estados del bloque de demo. Vaciar no lleva relevo —se
+     va—; los otros tres se reemplazan entre sí. */
+  const SWAP = {
+    pista: '<span class="op-meta">Escribí algo para empezar.</span>',
+    cargando: `${Icons.spinner()}<span class="op-meta">Buscando…</span>`,
+    resultado: `${Icons.svg('check')}<span>Tres coincidencias</span><span class="op-chip">n-0042</span>`,
+    vacio: '',
+  };
+  const swapBox = rootEl.querySelector('#demo-swap');
+  if (swapBox) swap(swapBox, SWAP.pista);
+  rootEl.querySelector('#demo-swap-btns')?.addEventListener('click', (e) => {
+    const k = e.target.closest('[data-swap]')?.dataset.swap;
+    if (k) swap(swapBox, SWAP[k], { relevo: k !== 'vacio' });
+  });
+
+  /* frase(): si cambian solo las cifras, destella en su lugar; si cambia la
+     frase, relevo. */
+  const fraseEl = rootEl.querySelector('#demo-frase');
+  let bajado = 41;
+  const bajando = () => `Bajando la 0.5.0… ${bajado} %`;
+  if (fraseEl) frase(fraseEl, bajando());
+  rootEl.querySelector('#demo-frase-mas')?.addEventListener('click', () => {
+    bajado = bajado >= 99 ? 12 : Math.min(99, bajado + 7);
+    frase(fraseEl, bajando());
+  });
+  rootEl.querySelector('#demo-frase-fin')?.addEventListener('click', () => {
+    bajado = 12;
+    frase(fraseEl, 'Listo: se instala al cerrar.');
+  });
+
+  /* ocupar(): el botón de demo trabaja 1,6 s y vuelve. El rótulo de cada
+     estado sale de acá, no de una foto del innerHTML: la foto se llevaría el
+     destello del clic que todavía está. */
+  const ocupadoBtn = rootEl.querySelector('#demo-ocupar');
+  const ROTULO = {
+    libre: `${Icons.svg('download')} Exportar`,
+    ocupado: `${Icons.spinner()} Exportando las 12 páginas…`,
+  };
+  ocupadoBtn?.addEventListener('click', () => {
+    if (ocupadoBtn.dataset.ocupado === '1') return;
+    ocupar(ocupadoBtn, true, ROTULO.ocupado);
+    setTimeout(() => { if (ocupadoBtn.isConnected) ocupar(ocupadoBtn, false, ROTULO.libre); }, 1600);
+  });
+
+  /* contador(): nace vacío (vacío es «nada que contar»). */
+  let cuenta = 0;
+  const cont = rootEl.querySelector('#demo-contador');
+  rootEl.querySelector('#demo-contar-mas')?.addEventListener('click', () => contador(cont, ++cuenta));
+  rootEl.querySelector('#demo-contar-vaciar')?.addEventListener('click', () => { cuenta = 0; contador(cont, 0); });
+
+  /* Mostrar y esconder: el JS solo cambia `hidden`, el CSS pliega. */
+  const plegable = rootEl.querySelector('#demo-plegable');
+  rootEl.querySelector('#demo-plegar')?.addEventListener('click', () => { plegable.hidden = !plegable.hidden; });
+  const ancho = rootEl.querySelector('#demo-plegable-ancho');
+  rootEl.querySelector('#demo-plegar-ancho')?.addEventListener('click', () => { ancho.hidden = !ancho.hidden; });
 
   /* Overlays */
   rootEl.querySelector('#demo-menu')?.addEventListener('click', (e) => {
@@ -619,7 +841,7 @@ export function wireDesign(rootEl) {
         </div>`,
       actions: [
         { label: 'Cancelar', value: null },
-        { label: 'Crear', value: true, variant: 'primary', autofocus: true },
+        { label: 'Crear', value: true, variant: 'primary' },
       ],
     }).then((v) => v && Toast.show({ title: 'Devolvió true', text: 'Esto es la vitrina: no se creó nada.', icon: 'info' }));
   });
@@ -638,6 +860,17 @@ export function wireDesign(rootEl) {
 
   rootEl.querySelector('#demo-toast-err')?.addEventListener('click', () =>
     Toast.error('No se pudo guardar', 'EPERM: el archivo está tomado por otro proceso. Se reintentó 5 veces.'));
+
+  wireMotion(rootEl);
+
+  // Los dos íconos de un mismo botón se cruzan (.op-iconswap): copiar → copiado.
+  const iconswap = rootEl.querySelector('#demo-iconswap');
+  let iconswapVuelta = null;
+  iconswap?.addEventListener('click', () => {
+    iconswap.classList.add('is-b');
+    clearTimeout(iconswapVuelta);
+    iconswapVuelta = setTimeout(() => iconswap.classList.remove('is-b'), 1400);
+  });
 
   /* Íconos: click = copiar la etiqueta lista para pegar. */
   rootEl.querySelector('#icon-grid')?.addEventListener('click', (e) => {

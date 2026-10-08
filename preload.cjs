@@ -26,6 +26,8 @@ const on = (channel) => (cb) => {
   return () => ipcRenderer.off(channel, handler);
 };
 
+const clip = { read: () => call('clip:read') };
+
 const win = {
   minimize: () => ipcRenderer.send('win:minimize'),
   toggleMaximize: () => ipcRenderer.send('win:toggle-maximize'),
@@ -38,7 +40,13 @@ const win = {
 
 contextBridge.exposeInMainWorld('strata', {
   info: () => call('app:info'),
+  /** Los archivos de datos ilegibles que se apartaron en esta corrida. */
+  asides: () => call('store:asides'),
   win,
+
+  /** Leer el portapapeles (el «Pegar» del menú de los campos). Escribir no
+      pasa por acá: navigator.clipboard.writeText no pide permiso. */
+  clip,
 
   settings: {
     get: () => call('settings:get'),
@@ -88,6 +96,7 @@ contextBridge.exposeInMainWorld('strata', {
   pathForFile: (file) => webUtils.getPathForFile(file),
 });
 
-/* Las piezas de Opal (la vitrina de Piezas) buscan `window.opal.win`. Se les
-   da solo eso, con el mismo nombre de siempre, para no editar el framework. */
-contextBridge.exposeInMainWorld('opal', { win });
+/* El framework de Opal busca `window.opal`: la vitrina de Piezas usa `win`, y
+   el menú de los campos (overlays.js) lee el portapapeles por `clip`. Se les da
+   solo eso, con el mismo nombre de siempre, para no editar el framework. */
+contextBridge.exposeInMainWorld('opal', { win, clip });
