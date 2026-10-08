@@ -742,3 +742,10 @@ body.is-busy, body.is-busy * { cursor: progress !important; }
 }
 .st-drop.is-on .st-drop__box { transform: none; }
 .st-drop__box > .op-icon { color: var(--op-accent); margin-bottom: var(--op-2); }
+
+/* ── El tono de lo que flota ─────────────────────────────────────────────────
+   La receta es la de Opal (--op-flota, tokens.css): menús y toasts del mismo
+   tono que las tarjetas que tapan. La base se MIDE, no se pone a ojo: con el
+   90 % de Opal, acá el menú quedaba un poco más oscuro que la tarjeta (26
+   contra 28, color de píxel en una captura de Piezas). Al 80 %: 28 y 28. */
+:root { --op-flota-base: 80%; }
