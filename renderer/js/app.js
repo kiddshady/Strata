@@ -16,7 +16,7 @@
 import { Icons } from './icons.js';
 import { Tooltip, Toast, Menu, FieldMenu } from './overlays.js';
 import Router from './router.js';
-import { initClickFlash, initScrollFades, raf2, toggleReveal, contador } from './motion.js';
+import { initClickFlash, initScrollFades, raf2, toggleReveal, contador, swap, roll } from './motion.js';
 import { esc, paint, head, attempt, colorToken } from './ui.js';
 import { fmtBytes, fmtInt, fmtNum } from './format.js';
 
@@ -385,13 +385,21 @@ function wireShell() {
    interrumpir. Click reinicia e instala; si no, se instala al cerrar. */
 function wireUpdates() {
   const el = document.getElementById('stat-update');
+  /* La estructura se arma una vez por fase (con relevo entre «Bajando» y
+     «lista») y el % corre en su lugar con roll(), sin destello. Antes se
+     reescribía todo con innerHTML en cada aviso de la descarga: el spinner
+     volvía a nacer y el número titilaba en cada %. */
   const paintUpdate = (s) => {
     if (!s || s.state === 'idle') { el.classList.remove('is-on'); return; }
     el.hidden = false;
     const ready = s.state === 'ready';
-    el.innerHTML = ready
+    swap(el, ready
       ? `${Icons.svg('download')}<span>Strata ${esc(s.version)} lista · reiniciar</span>`
-      : `${Icons.spinner()}<span class="op-num">Bajando ${esc(s.version)} · ${s.percent ?? 0}%</span>`;
+      : `${Icons.spinner()}<span class="op-num">Bajando ${esc(s.version)} · <span data-update-pct></span>%</span>`,
+    { relevo: true });
+    // Lo nuevo es hijo directo; lo que se va, adentro del calco.
+    const pct = el.querySelector(':scope > span > [data-update-pct]');
+    if (!ready && pct) roll(pct, s.percent ?? 0, (v) => { pct.textContent = Math.round(v); });
     el.classList.toggle('is-ready', ready);
     el.dataset.tip = ready ? 'Cierra Strata, instala la versión nueva y la vuelve a abrir' : 'Se instala sola cuando termine';
     el.dataset.tipSide = 'top';

@@ -300,6 +300,29 @@ app.whenReady().then(async () => {
      de fecha, las sugerencias de un campo) sale con su blanco de fábrica. */
   ok('la interfaz se declara oscura (color-scheme)', (await js(`getComputedStyle(document.documentElement).colorScheme`)) === 'dark');
 
+  /* El % de la descarga corre en su lugar, sin destello y sin rehacer el
+     aviso: antes era un innerHTML por aviso y el número titilaba. */
+  console.log('\n11-bis. El progreso de la actualización');
+  const manda = (s) => win.webContents.send('update:state', s);
+  manda({ state: 'downloading', version: '9.9.9', percent: 10 });
+  await sleep(500);
+  const spin0 = await js(`(() => { const s = document.querySelector('#stat-update > svg'); window.__spin0 = s; return !!s; })()`);
+  manda({ state: 'downloading', version: '9.9.9', percent: 60 });
+  const pasos = [];
+  for (let i = 0; i < 8; i++) { await sleep(30); pasos.push(await js(`parseInt(document.querySelector('#stat-update [data-update-pct]')?.textContent, 10)`)); }
+  manda({ state: 'downloading', version: '9.9.9', percent: 80 });
+  await sleep(700);
+  const prog = await js(`(() => {
+    const el = document.getElementById('stat-update');
+    return { dice: el.textContent.trim(), mismoSpinner: el.querySelector(':scope > svg') === window.__spin0,
+      destello: !!el.querySelector('.op-ticked') || el.classList.contains('op-ticked'), calco: !!el.querySelector('.op-swap-out') };
+  })()`);
+  ok('el % corre de a poco (pasa por el medio)', spin0 && pasos.some((v) => v > 10 && v < 60), JSON.stringify(pasos));
+  ok('y llega al último sin destello ni relevo, con el mismo spinner',
+    prog.dice.endsWith('80%') && !prog.destello && !prog.calco && prog.mismoSpinner, JSON.stringify(prog));
+  manda({ state: 'idle' });
+  await sleep(300);
+
   console.log('\n12. Consola limpia');
   const limpios = errores.filter((e) => !/gpu/i.test(e));
   ok('sin errores de renderer', limpios.length === 0, limpios.join(' | '));
